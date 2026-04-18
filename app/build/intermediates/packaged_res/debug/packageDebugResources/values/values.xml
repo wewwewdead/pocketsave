@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="pocketsave_background">#F6F4F5</color>
+    <color name="pocketsave_dark_primary">#1F1B1D</color>
+    <string name="app_name">PocketSave</string>
+    <string name="purchased_items_widget_description">Track your purchased items during an active shopping trip.</string>
+    <string name="purchased_items_widget_label">PocketSave purchased items</string>
+    <style name="Theme.PocketSave" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@android:color/white</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>

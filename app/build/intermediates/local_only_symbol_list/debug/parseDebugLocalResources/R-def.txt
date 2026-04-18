@@ -1,0 +1,15 @@
+R_DEF: Internal format may change without notice
+local
+color pocketsave_background
+color pocketsave_dark_primary
+layout widget_initial_loading
+mipmap ic_launcher
+mipmap ic_launcher_round
+string app_name
+string purchased_items_widget_description
+string purchased_items_widget_label
+style Theme.PocketSave
+xml backup_rules
+xml data_extraction_rules
+xml file_paths
+xml purchased_items_widget_info

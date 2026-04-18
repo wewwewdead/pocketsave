@@ -1,0 +1,34 @@
+[
+    {
+        "merged": "com.pocketsave.app-debug-79:/xml_file_paths.xml.flat",
+        "source": "com.pocketsave.app-main-81:/xml/file_paths.xml"
+    },
+    {
+        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-79:\\xml_purchased_items_widget_info.xml.flat",
+        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-81:\\xml\\purchased_items_widget_info.xml"
+    },
+    {
+        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-79:\\mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-81:\\mipmap-anydpi-v26\\ic_launcher_round.xml"
+    },
+    {
+        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-79:\\xml_backup_rules.xml.flat",
+        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-81:\\xml\\backup_rules.xml"
+    },
+    {
+        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-79:\\xml_data_extraction_rules.xml.flat",
+        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-81:\\xml\\data_extraction_rules.xml"
+    },
+    {
+        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-79:\\xml_file_paths.xml.flat",
+        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-81:\\xml\\file_paths.xml"
+    },
+    {
+        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-79:\\mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-81:\\mipmap-anydpi-v26\\ic_launcher.xml"
+    },
+    {
+        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-79:\\layout_widget_initial_loading.xml.flat",
+        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-81:\\layout\\widget_initial_loading.xml"
+    }
+]
