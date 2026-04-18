@@ -14,8 +14,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -45,16 +47,25 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -68,6 +79,7 @@ import com.pocketsave.core.scanner.classifier.PackagingClassifier
 import com.pocketsave.core.service.VaultService
 import com.pocketsave.data.local.entity.ItemEntity
 import com.pocketsave.data.local.entity.CategoryEntity
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -101,7 +113,38 @@ fun VaultScreen(
     var showCategoryManager by remember { mutableStateOf(false) }
     var showCreateCartSheet by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
+    val flightState = rememberVaultFlightState()
+    // The LazyColumn's own top-left in root coordinates. Captured via
+    // `onGloballyPositioned` on the LazyColumn and read by the flight overlay
+    // to compute the target row's landing point accurately. Starts at Zero;
+    // the first layout pass fills it in before the 320 ms flight lead-in
+    // finishes, so the ghost's first visible frame already targets correctly.
+    var listRootOrigin by remember { mutableStateOf(Offset.Zero) }
 
+    // When a flight is starting, scroll the LazyColumn so the target row is
+    // on-screen by the time the ghost begins moving. We compute the absolute
+    // LazyColumn index by walking the sections, accounting for the header
+    // row per non-empty section. If the item isn't in the current sections
+    // (e.g. filtered out by search), skip the scroll — the flight will still
+    // run, just without a visible landing point.
+    LaunchedEffect(flightState.flight?.itemId, ui.sections) {
+        val targetId = flightState.flight?.itemId ?: return@LaunchedEffect
+        val targetIndex = indexOfItemInSections(ui.sections, targetId)
+        if (targetIndex >= 0) listState.animateScrollToItem(targetIndex)
+    }
+
+    // Auto-clear the "just landed" pulse after the hold expires. Owning the
+    // delay job here (rather than inside VaultFlightState) keeps it bound to
+    // this screen's composition scope — navigating away cancels cleanly.
+    LaunchedEffect(flightState.justLandedId) {
+        if (flightState.justLandedId != null) {
+            delay(LANDED_PULSE_HOLD_MS)
+            flightState.clearJustLanded()
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
         topBar = {
             VaultTopBar(
@@ -151,6 +194,10 @@ fun VaultScreen(
                     ui.totalItems == 0 -> EmptyState(search = ui.searchQuery)
                     else -> VaultItemList(
                         ui = ui,
+                        listState = listState,
+                        hiddenItemId = flightState.flight?.itemId,
+                        justLandedItemId = flightState.justLandedId,
+                        onListPositioned = { listRootOrigin = it },
                         onEdit = viewModel::requestEditItem,
                         onDelete = viewModel::requestDeleteItem,
                         onQuantityChange = viewModel::updateSelectionQuantity,
@@ -160,13 +207,40 @@ fun VaultScreen(
         }
     }
 
+    // Flight overlay above the Scaffold — positioned in the same Box so its
+    // root coordinates match the ones captured for the Save button.
+    flightState.flight?.let { flight ->
+        FlightGhost(
+            flight = flight,
+            listState = listState,
+            listRootOrigin = listRootOrigin,
+            // markLanded both clears the in-air flight AND signals the row
+            // to run its arrival pulse. The row re-materialises at alpha=1
+            // and scales up briefly as the ghost fades out on top of it.
+            onFinished = { flightState.markLanded(flight.itemId) },
+        )
+    }
+    } // end outer Box
+
     if (showAddItemSheet) {
         ItemFormSheet(
             vaultService = vaultService,
             existing = null,
             initialCategoryName = ui.selectedCategoryName,
             onDismiss = { showAddItemSheet = false },
-            onSaved = { showAddItemSheet = false },
+            onSaved = { hint ->
+                showAddItemSheet = false
+                hint?.let {
+                    flightState.start(
+                        VaultFlight(
+                            itemId = it.insertedItem.id,
+                            itemName = it.insertedItem.name,
+                            imageUri = it.insertedItem.imageUri,
+                            originCenter = it.saveButtonCenter,
+                        ),
+                    )
+                }
+            },
             textRecognitionService = textRecognitionService,
             packagingClassifier = packagingClassifier,
         )
@@ -178,7 +252,7 @@ fun VaultScreen(
             existing = editing,
             initialCategoryName = null,
             onDismiss = viewModel::clearEditRequest,
-            onSaved = viewModel::clearEditRequest,
+            onSaved = { _ -> viewModel.clearEditRequest() },
             textRecognitionService = textRecognitionService,
             packagingClassifier = packagingClassifier,
         )
@@ -307,12 +381,23 @@ private fun CategoryStrip(
 @Composable
 private fun VaultItemList(
     ui: VaultUiState,
+    listState: LazyListState,
+    hiddenItemId: String?,
+    justLandedItemId: String?,
+    onListPositioned: (Offset) -> Unit,
     onEdit: (ItemEntity) -> Unit,
     onDelete: (ItemEntity) -> Unit,
     onQuantityChange: (String, String?, Double) -> Unit,
 ) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            // Report our top-left in root coords so the flight overlay can
+            // translate `listState`'s viewport-local offsets to the screen.
+            // onGloballyPositioned only fires when the position actually
+            // changes, so this doesn't churn per frame.
+            .onGloballyPositioned { onListPositioned(it.positionInRoot()) },
         contentPadding = PaddingValues(bottom = 120.dp),
     ) {
         ui.sections.forEach { section ->
@@ -328,6 +413,8 @@ private fun VaultItemList(
             items(items = section.items, key = { it.item.id }) { row ->
                 VaultItemRowView(
                     row = row,
+                    hidden = row.item.id == hiddenItemId,
+                    justLanded = row.item.id == justLandedItemId,
                     onEdit = onEdit,
                     onDelete = onDelete,
                     onQuantityChange = onQuantityChange,
@@ -335,6 +422,28 @@ private fun VaultItemList(
             }
         }
     }
+}
+
+/**
+ * Absolute LazyColumn index of the row whose item.id matches [itemId], or -1
+ * when the item is absent from the current section list (e.g. filtered out by
+ * search). Mirrors the loop structure in [VaultItemList]: one index per
+ * non-empty section header, then one per item within it.
+ */
+private fun indexOfItemInSections(
+    sections: List<VaultCategorySection>,
+    itemId: String,
+): Int {
+    var index = 0
+    for (section in sections) {
+        if (section.items.isEmpty()) continue
+        index++ // header
+        for (row in section.items) {
+            if (row.item.id == itemId) return index
+            index++
+        }
+    }
+    return -1
 }
 
 @Composable
@@ -371,6 +480,8 @@ private fun CategoryHeader(iconKey: String, colorHex: String?, name: String, cou
 @Composable
 private fun VaultItemRowView(
     row: VaultItemRow,
+    hidden: Boolean,
+    justLanded: Boolean,
     onEdit: (ItemEntity) -> Unit,
     onDelete: (ItemEntity) -> Unit,
     onQuantityChange: (String, String?, Double) -> Unit,
@@ -378,11 +489,30 @@ private fun VaultItemRowView(
     val primaryStore = row.primaryStore
     val currentQty = row.quantityForStore(primaryStore)
 
+    // Arrival pulse: when the ghost hands off to this row, the target scale
+    // briefly bumps to 1.15× and springs back — the "it landed here" beat.
+    // MediumBouncy damping + MediumLow stiffness gives a clearly visible
+    // rebound that registers even in peripheral vision, then settles without
+    // a second oscillation. Held for ~500 ms (see LANDED_PULSE_HOLD_MS).
+    val landingScale by animateFloatAsState(
+        targetValue = if (justLanded) 1.15f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "vaultRowLandingPulse",
+    )
+
+    // While the flight ghost is in the air, the real row reserves its layout
+    // slot but paints nothing. The ghost lands on top of it; once the overlay
+    // clears, this row fades back in at alpha = 1 and runs the pulse above.
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
-            .clickable { onEdit(row.item) },
+            .alpha(if (hidden) 0f else 1f)
+            .scale(landingScale)
+            .clickable(enabled = !hidden) { onEdit(row.item) },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(12.dp),
     ) {

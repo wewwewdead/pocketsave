@@ -1,29 +1,25 @@
 package com.pocketsave.core.onboarding
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import com.pocketsave.core.onboarding.motion.onboardingStepTransition
 
 /**
- * Port of `OnboardingContainer` from `PocketSave/Core/Onboarding/OnboardingContainer.swift`.
+ * Step host for the onboarding flow. Owns one [AnimatedContent] so every step
+ * transition runs through the shared motion factory; each screen is
+ * responsible for its own body + header/footer via [OnboardingScaffold].
  *
- * Hosts the step machine; when `onboardingComplete` flips the enclosing navigator
- * swaps this destination for Home, matching the iOS `ContentView` branch.
+ * Back behaviour: the system back gesture walks the step machine back one
+ * place rather than leaving the onboarding destination. On the first step
+ * back is a no-op (caller is the nav host root).
  */
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
@@ -35,40 +31,32 @@ fun OnboardingContainer(
         if (viewModel.onboardingComplete) onComplete()
     }
 
+    BackHandler(enabled = viewModel.currentStep != OnboardingStep.WELCOME) {
+        viewModel.navigateBack()
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
-        contentAlignment = Alignment.TopCenter,
     ) {
         AnimatedContent(
             targetState = viewModel.currentStep,
             label = "onboarding-step",
             transitionSpec = {
                 val forward = targetState.ordinal > initialState.ordinal
-                val offset = if (forward) 1 else -1
-                (
-                    slideInHorizontally(tween(400)) { full -> offset * full } + fadeIn(tween(400))
-                ) togetherWith (
-                    slideOutHorizontally(tween(400)) { full -> -offset * full } + fadeOut(tween(400))
-                )
+                onboardingStepTransition(forward = forward)
             },
             modifier = Modifier.fillMaxSize(),
         ) { step ->
             when (step) {
                 OnboardingStep.WELCOME -> OnboardingWelcomeScreen(viewModel)
-                OnboardingStep.LAST_STORE -> OnboardingLastStoreScreen(viewModel)
-                OnboardingStep.FIRST_ITEM -> OnboardingFirstItemScreen(viewModel)
-                OnboardingStep.DONE -> OnboardingDoneScreen()
-            }
-        }
-
-        if (viewModel.showPageIndicator &&
-            (viewModel.currentStep == OnboardingStep.LAST_STORE ||
-                viewModel.currentStep == OnboardingStep.FIRST_ITEM)
-        ) {
-            Box(modifier = Modifier.padding(top = 12.dp)) {
-                PageIndicator(currentStep = viewModel.currentStep)
+                OnboardingStep.VALUE -> OnboardingValueScreen(viewModel)
+                OnboardingStep.CURRENCY -> OnboardingCurrencyScreen(viewModel)
+                OnboardingStep.STORE -> OnboardingLastStoreScreen(viewModel)
+                OnboardingStep.ITEM -> OnboardingFirstItemScreen(viewModel)
+                OnboardingStep.TRIP -> OnboardingFirstTripScreen(viewModel)
+                OnboardingStep.HANDOFF -> OnboardingHandoffScreen(viewModel)
             }
         }
     }

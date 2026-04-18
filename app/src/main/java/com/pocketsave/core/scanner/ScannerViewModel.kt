@@ -39,12 +39,16 @@ class ScannerViewModel(
     /**
      * Runs OCR (+ optional packaging classification) on an in-memory bitmap —
      * used by the CameraX capture path.
+     *
+     * [rotationDegrees] is the rotation CameraX reports for the frame (0, 90,
+     * 180, or 270). ML Kit applies it internally inside [recognize] so we
+     * avoid a second full-size bitmap allocation just for rotation.
      */
-    fun analyzeCapture(bitmap: Bitmap) {
+    fun analyzeCapture(bitmap: Bitmap, rotationDegrees: Int = 0) {
         viewModelScope.launch {
             _state.value = UiState(isRecognizing = true)
             runCatching {
-                val blocks = textRecognition.recognize(bitmap)
+                val blocks = textRecognition.recognize(bitmap, rotationDegrees)
                 val packagingSignals = if (packagingClassifier.isModelAvailable) {
                     withContext(Dispatchers.Default) { packagingClassifier.classify(bitmap) }
                 } else emptyList()

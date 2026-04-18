@@ -20,6 +20,10 @@ interface CategoryDao {
     @Query("SELECT * FROM categories WHERE uid = :uid")
     suspend fun findByUid(uid: String): CategoryEntity?
 
+    /** Batched [findByUid] — returns in arbitrary order; callers associateBy { uid }. */
+    @Query("SELECT * FROM categories WHERE uid IN (:uids)")
+    suspend fun findByUids(uids: List<String>): List<CategoryEntity>
+
     @Query("SELECT * FROM categories WHERE vaultUid = :vaultUid AND LOWER(TRIM(name)) = LOWER(TRIM(:name)) LIMIT 1")
     suspend fun findByName(vaultUid: String, name: String): CategoryEntity?
 

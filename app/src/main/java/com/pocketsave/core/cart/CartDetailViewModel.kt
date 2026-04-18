@@ -1,5 +1,6 @@
 package com.pocketsave.core.cart
 
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -174,7 +175,9 @@ class CartDetailViewModel(
             ?: return CartDetailUiState.empty(cartId)
         val items = snapshot.cartItemsByCart[cartId].orEmpty()
         val status = CartStatus.fromRaw(cart.status)
-        val itemById = snapshot.items.associateBy { it.id }
+        // Use the pre-computed map from the snapshot rather than rebuilding it
+        // per emission.
+        val itemById = snapshot.itemsById
 
         val rows = items.map { cartItem -> toRow(cartItem, itemById, status, cart.createdAt) }
         val totalSpent = vaultService.computeTotalSpent(status, items)
@@ -283,6 +286,7 @@ class CartDetailViewModel(
     }
 }
 
+@Immutable
 data class CartDetailUiState(
     val cart: CartEntity? = null,
     val status: CartStatus = CartStatus.PLANNING,
@@ -310,12 +314,14 @@ data class CartDetailUiState(
     }
 }
 
+@Immutable
 data class StoreSection(
     val store: String,
     val rows: List<CartDetailItemRow>,
     val storeTotal: Double,
 )
 
+@Immutable
 data class CartDetailItemRow(
     val cartItem: CartItemEntity,
     val vaultItem: ItemEntity?,

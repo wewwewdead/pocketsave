@@ -96,7 +96,7 @@ class WidgetSnapshotStore(
             ?: return PurchasedItemsWidgetSnapshot(generatedAtMillis = System.currentTimeMillis())
 
         val items = state.cartItemsByCart[preferred.id].orEmpty()
-        val itemById = state.items.associateBy { it.id }
+        val itemById = state.itemsById
 
         val fulfilledItems = items.filter { isPurchased(it) }.sortedWith(
             compareByDescending<CartItemEntity> { it.addedAt?.time ?: Long.MIN_VALUE }

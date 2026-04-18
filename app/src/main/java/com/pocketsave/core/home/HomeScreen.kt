@@ -51,9 +51,11 @@ import com.pocketsave.common.util.ColorOption
 import com.pocketsave.core.cart.CreateCartSheet
 import com.pocketsave.core.cart.VaultSelectionStore
 import com.pocketsave.core.currency.CurrencyPickerSheet
+import com.pocketsave.core.home.hints.HomeFirstRunHints
 import com.pocketsave.core.service.VaultService
 import com.pocketsave.data.local.entity.CartEntity
 import com.pocketsave.data.prefs.AppPreferences
+import com.pocketsave.data.prefs.CartBackground
 import com.pocketsave.data.prefs.CartBackgroundStore
 import com.pocketsave.domain.model.CartStatus
 import kotlinx.coroutines.launch
@@ -79,6 +81,10 @@ fun HomeScreen(
 ) {
     val state by vaultService.state.collectAsState()
     val selectedItems by selectionStore.activeCartItems.collectAsState()
+    // Bulk-collected once per HomeScreen instance. Previously each cart row
+    // spun up two separate collectAsState flows against DataStore, which meant
+    // 2N active subscriptions for N rows.
+    val backgrounds by backgroundStore.allBackgrounds.collectAsState(initial = emptyMap())
     val userName = state.user?.name ?: "Default User"
     val active = state.carts.filter { CartStatus.fromRaw(it.status) != CartStatus.COMPLETED }
     val completed = state.carts.filter { CartStatus.fromRaw(it.status) == CartStatus.COMPLETED }
@@ -88,6 +94,13 @@ fun HomeScreen(
     var showCreateCartSheet by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<CartEntity?>(null) }
     val scope = rememberCoroutineScope()
+
+    // First-run hints flag: raised by the onboarding flow when it completes,
+    // cleared the moment the overlay is dismissed. Only surface hints when
+    // there's actually a cart to point at — otherwise the tips lose their
+    // anchor and feel disconnected.
+    val shouldShowFirstRunHints by preferences.shouldShowFirstRunHints.collectAsState(initial = false)
+    val firstRunHintsVisible = shouldShowFirstRunHints && active.isNotEmpty()
 
     Scaffold(
         topBar = {
@@ -118,8 +131,9 @@ fun HomeScreen(
             )
         },
     ) { inner ->
+    Box(modifier = Modifier.padding(inner).fillMaxSize()) {
     LazyColumn(
-        modifier = Modifier.padding(inner).fillMaxSize(),
+        modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -156,7 +170,7 @@ fun HomeScreen(
                         state.cartItemsByCart[cart.id].orEmpty(),
                     ),
                     itemCount = state.cartItemsByCart[cart.id]?.size ?: 0,
-                    backgroundStore = backgroundStore,
+                    background = backgrounds[cart.id] ?: CartBackground.EMPTY,
                     onClick = { onOpenCart(cart.id) },
                     onRequestDelete = { pendingDelete = cart },
                 )
@@ -178,12 +192,20 @@ fun HomeScreen(
                         state.cartItemsByCart[cart.id].orEmpty(),
                     ),
                     itemCount = state.cartItemsByCart[cart.id]?.size ?: 0,
-                    backgroundStore = backgroundStore,
+                    background = backgrounds[cart.id] ?: CartBackground.EMPTY,
                     onClick = { onOpenCart(cart.id) },
                     onRequestDelete = { pendingDelete = cart },
                 )
             }
         }
+    }
+
+    HomeFirstRunHints(
+        visible = firstRunHintsVisible,
+        onDismissed = {
+            scope.launch { preferences.setShouldShowFirstRunHints(false) }
+        },
+    )
     }
     }
 
@@ -245,14 +267,14 @@ private fun CartSummaryCard(
     cart: CartEntity,
     totalSpent: Double,
     itemCount: Int,
-    backgroundStore: CartBackgroundStore,
+    background: CartBackground,
     onClick: () -> Unit,
     onRequestDelete: () -> Unit,
 ) {
     val formatter = com.pocketsave.core.currency.LocalCurrencyFormatter.current
-    val bgHex by backgroundStore.colorHex(cart.id).collectAsState(initial = null)
-    val bgImage by backgroundStore.imageUri(cart.id).collectAsState(initial = null)
-    val backgroundColor = ColorOption.byHex(bgHex ?: "")?.color ?: MaterialTheme.colorScheme.surface
+    val backgroundColor = ColorOption.byHex(background.colorHex ?: "")?.color
+        ?: MaterialTheme.colorScheme.surface
+    val bgImage = background.imageUri
     var menuExpanded by remember { mutableStateOf(false) }
 
     Card(

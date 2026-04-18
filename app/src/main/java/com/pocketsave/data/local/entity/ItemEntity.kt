@@ -32,9 +32,15 @@ import java.util.Date
         ),
     ],
     indices = [
+        // Single-column FK indexes kept so SQLite can use the narrowest form for
+        // Room's FK cascade checks.
         Index("categoryUid"),
         Index("vaultUid"),
-        Index("isDeleted"),
+        // Composites match the DAO's real query shapes:
+        //   `vaultUid = ? AND isDeleted = 0/1`   (listActive / listDeleted / findByNameExact)
+        //   `categoryUid = ? AND isDeleted = 0`  (listByCategory)
+        Index(value = ["vaultUid", "isDeleted"]),
+        Index(value = ["categoryUid", "isDeleted"]),
     ],
 )
 data class ItemEntity(

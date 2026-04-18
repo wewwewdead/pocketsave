@@ -30,6 +30,7 @@ class AppPreferences(private val context: Context) {
         val CURRENCY_SYMBOL = stringPreferencesKey("selected_currency_symbol")
         val CUSTOM_UNITS_JSON = stringPreferencesKey("custom_units_json")
         val VISIBLE_CATEGORIES_JSON = stringPreferencesKey("visible_categories_json")
+        val SHOULD_SHOW_FIRST_RUN_HINTS = booleanPreferencesKey("should_show_first_run_hints")
     }
 
     val hasCompletedOnboarding: Flow<Boolean> =
@@ -49,6 +50,14 @@ class AppPreferences(private val context: Context) {
 
     val visibleCategoriesJson: Flow<String?> =
         context.dataStore.data.map { it[Keys.VISIBLE_CATEGORIES_JSON] }
+
+    /**
+     * One-shot flag raised when onboarding finishes, cleared as soon as the
+     * Home first-run hints are dismissed. Home observes this so it can render
+     * light coach marks on the newly-created trip the first time Home mounts.
+     */
+    val shouldShowFirstRunHints: Flow<Boolean> =
+        context.dataStore.data.map { it[Keys.SHOULD_SHOW_FIRST_RUN_HINTS] ?: false }
 
     suspend fun hasCompletedOnboardingNow(): Boolean =
         hasCompletedOnboarding.first()
@@ -76,5 +85,9 @@ class AppPreferences(private val context: Context) {
         context.dataStore.edit {
             if (value == null) it.remove(Keys.VISIBLE_CATEGORIES_JSON) else it[Keys.VISIBLE_CATEGORIES_JSON] = value
         }
+    }
+
+    suspend fun setShouldShowFirstRunHints(value: Boolean) {
+        context.dataStore.edit { it[Keys.SHOULD_SHOW_FIRST_RUN_HINTS] = value }
     }
 }

@@ -29,6 +29,9 @@ import java.util.Date
     indices = [
         Index("cartId"),
         Index("itemId"),
+        // `cartId = ? ORDER BY addedAt ASC` (listByCart) and the multi-cart IN-list
+        // (listForCarts) both benefit from SQLite reading rows pre-ordered per cartId.
+        Index(value = ["cartId", "addedAt"]),
     ],
 )
 data class CartItemEntity(

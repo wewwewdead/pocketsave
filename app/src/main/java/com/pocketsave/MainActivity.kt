@@ -7,14 +7,13 @@ import androidx.activity.compose.setContent
 import com.pocketsave.app.AppContainer
 import com.pocketsave.app.DeepLink
 import com.pocketsave.app.PocketSaveNavHost
-import com.pocketsave.app.Routes
 import com.pocketsave.common.ui.PocketSaveTheme
 import com.pocketsave.core.currency.CurrencyFormatterProvider
-import kotlinx.coroutines.runBlocking
 
 /**
- * Hosts the Compose navigation graph and picks the start destination from the
- * persisted onboarding flag, mirroring the iOS `ContentView` branch in
+ * Hosts the Compose navigation graph. The start destination is resolved
+ * asynchronously inside [PocketSaveNavHost] from the persisted onboarding
+ * flag, mirroring the iOS `ContentView` branch in
  * `PocketSave/App/GrockApp.swift`.
  *
  * Also intercepts `pocketsave://…` deep-link intents (see [DeepLink]) and
@@ -29,13 +28,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Match iOS `hadCompletedOnboardingAtLaunch` — one synchronous read at launch
-        // before the first composition, so the initial route never flickers.
-        val hasCompletedOnboarding = runBlocking {
-            container.preferences.hasCompletedOnboardingNow()
-        }
-        val startDestination = if (hasCompletedOnboarding) Routes.HOME else Routes.ONBOARDING
 
         // Cold-launch deep link: stash the parsed action before Compose mounts
         // so the nav host reads a non-null pending intent on first composition.
@@ -52,7 +44,6 @@ class MainActivity : ComponentActivity() {
                         textRecognitionService = container.textRecognitionService,
                         packagingClassifier = container.packagingClassifier,
                         appContainer = container,
-                        startDestination = startDestination,
                     )
                 }
             }

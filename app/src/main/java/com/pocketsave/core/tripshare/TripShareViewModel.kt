@@ -2,6 +2,7 @@ package com.pocketsave.core.tripshare
 
 import android.content.Context
 import android.graphics.Bitmap
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -45,6 +46,7 @@ class TripShareViewModel(
 
     enum class ViewType { RECEIPT, PHYSICS }
 
+    @Immutable
     data class UiState(
         val cartDetail: CartDetailUiState = CartDetailUiState(),
         val backgroundColor: ColorOption = ColorOption.defaultColor,
@@ -78,7 +80,8 @@ class TripShareViewModel(
         val items = snapshot.cartItemsByCart[cartId].orEmpty()
         val status = cart?.let { CartStatus.fromRaw(it.status) } ?: CartStatus.PLANNING
         val totalSpent = cart?.let { vaultService.computeTotalSpent(status, items) } ?: 0.0
-        val itemById = snapshot.items.associateBy { it.id }
+        // Pre-computed in VaultService.buildSnapshot — no per-emission rebuild.
+        val itemById = snapshot.itemsById
         val rows = items.map { ci ->
             val name = when {
                 ci.isShoppingOnlyItem -> ci.shoppingOnlyName.orEmpty()

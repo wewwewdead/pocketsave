@@ -1,9 +1,15 @@
 package com.pocketsave.app
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -27,8 +33,9 @@ import com.pocketsave.data.prefs.AppPreferences
 import com.pocketsave.data.prefs.CartBackgroundStore
 
 /**
- * Navigation entry — picks the start destination based on the onboarding flag,
- * mirroring the iOS `ContentView` branch in `PocketSave/App/GrockApp.swift`.
+ * Navigation entry — resolves the start destination asynchronously from the
+ * onboarding flag, mirroring the iOS `ContentView` branch in
+ * `PocketSave/App/GrockApp.swift` but without the main-thread blocking read.
  */
 object Routes {
     const val ONBOARDING = "onboarding"
@@ -51,14 +58,30 @@ fun PocketSaveNavHost(
     textRecognitionService: TextRecognitionService,
     packagingClassifier: PackagingClassifier,
     appContainer: AppContainer,
-    startDestination: String,
 ) {
+    // Resolve the onboarding flag off the main thread. DataStore reads it from
+    // its in-memory cache on subsequent launches, so the first emission lands
+    // within a frame or two on warm starts and just a bit later on cold starts.
+    // Until it lands we render the theme-background surface — the system splash
+    // has just finished showing, so the user sees a continuous background with
+    // no partial UI flash.
+    val hasCompletedOnboarding by produceState<Boolean?>(initialValue = null, preferences) {
+        value = preferences.hasCompletedOnboardingNow()
+    }
+
+    if (hasCompletedOnboarding == null) {
+        SplashBackground()
+        return
+    }
+
     val navController = rememberNavController()
     val pendingDeepLink by appContainer.pendingDeepLink.collectAsState()
+    val startDestination = if (hasCompletedOnboarding == true) Routes.HOME else Routes.ONBOARDING
 
-    // Route deep links as they arrive. The detail screen reads the same
-    // pending value to decide whether to auto-open the finish-trip sheet or
-    // pre-stage a quick-add selection key.
+    // Route deep links as they arrive. The detail screen reads the same pending
+    // value to decide whether to auto-open the finish-trip sheet or pre-stage a
+    // quick-add selection key. This LaunchedEffect is inside the resolved
+    // branch so it only fires after NavHost has a start destination.
     LaunchedEffect(pendingDeepLink) {
         val pending = pendingDeepLink ?: return@LaunchedEffect
         navController.navigate(Routes.cartDetail(pending.cartId)) {
@@ -151,6 +174,23 @@ fun PocketSaveNavHost(
             )
         }
     }
+}
+
+/**
+ * Blank theme-background surface shown only while the onboarding flag is still
+ * resolving off-thread. Keeping the fill transparent-to-the-theme avoids the
+ * "flicker" the old synchronous `runBlocking` read was guarding against: the
+ * Activity's window background is painted by the Android splash screen through
+ * to this composable, so the user sees one continuous colour until the real
+ * destination mounts.
+ */
+@Composable
+private fun SplashBackground() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+    )
 }
 
 private fun goToHome(navController: NavHostController) {

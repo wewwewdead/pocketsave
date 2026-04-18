@@ -40,6 +40,7 @@ import com.pocketsave.common.util.ColorOption
 import com.pocketsave.core.currency.LocalCurrencyFormatter
 import com.pocketsave.core.service.VaultService
 import com.pocketsave.data.local.entity.CartEntity
+import com.pocketsave.data.prefs.CartBackground
 import com.pocketsave.data.prefs.CartBackgroundStore
 import com.pocketsave.domain.model.CartStatus
 import java.text.DateFormat
@@ -61,6 +62,8 @@ fun HistoryScreen(
     onOpenCart: (String) -> Unit,
 ) {
     val state by vaultService.state.collectAsState()
+    // Single bulk collection; rows read from the map below.
+    val backgrounds by backgroundStore.allBackgrounds.collectAsState(initial = emptyMap())
     val completed = state.carts
         .filter { CartStatus.fromRaw(it.status) == CartStatus.COMPLETED }
         .sortedByDescending { it.completedAt ?: it.updatedAt }
@@ -99,7 +102,7 @@ fun HistoryScreen(
                             CartStatus.fromRaw(cart.status),
                             state.cartItemsByCart[cart.id].orEmpty(),
                         ),
-                        backgroundStore = backgroundStore,
+                        background = backgrounds[cart.id] ?: CartBackground.EMPTY,
                         onClick = { onOpenCart(cart.id) },
                     )
                 }
@@ -179,14 +182,14 @@ private fun RollupCard(rollup: Rollup) {
 private fun TripRow(
     cart: CartEntity,
     totalSpent: Double,
-    backgroundStore: CartBackgroundStore,
+    background: CartBackground,
     onClick: () -> Unit,
 ) {
     val formatter = LocalCurrencyFormatter.current
     val dateFormatter = remember { DateFormat.getDateInstance(DateFormat.MEDIUM) }
-    val bgHex by backgroundStore.colorHex(cart.id).collectAsState(initial = null)
-    val bgImage by backgroundStore.imageUri(cart.id).collectAsState(initial = null)
-    val background = ColorOption.byHex(bgHex ?: "")?.color ?: MaterialTheme.colorScheme.surface
+    val bgImage = background.imageUri
+    val backgroundColor = ColorOption.byHex(background.colorHex ?: "")?.color
+        ?: MaterialTheme.colorScheme.surface
 
     Card(
         onClick = onClick,
@@ -198,7 +201,7 @@ private fun TripRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .background(background),
+                .background(backgroundColor),
         ) {
             if (bgImage != null) {
                 AsyncImage(

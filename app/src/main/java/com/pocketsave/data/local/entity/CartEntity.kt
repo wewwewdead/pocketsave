@@ -23,7 +23,12 @@ import java.util.Date
     indices = [
         Index("vaultUid"),
         Index("status"),
-        Index("isDeleted"),
+        // Composite for the hot list queries:
+        //   `vaultUid = ? AND isDeleted = 0 ORDER BY createdAt DESC`  (listActiveByVault)
+        //   `vaultUid = ? AND isDeleted = 1 ORDER BY deletedAt DESC`  (listDeleted)
+        // SQLite uses the leading columns; the ORDER BY is served by an in-memory
+        // sort of the already-filtered set, which is tiny in practice.
+        Index(value = ["vaultUid", "isDeleted"]),
     ],
 )
 data class CartEntity(

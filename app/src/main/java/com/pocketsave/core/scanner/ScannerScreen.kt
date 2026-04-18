@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Matrix
 import android.net.Uri
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -140,7 +139,7 @@ fun ScannerScreen(
             if (hasCameraPermission) {
                 CameraPreviewWithCapture(
                     isRecognizing = state.isRecognizing,
-                    onCapture = { bitmap -> viewModel.analyzeCapture(bitmap) },
+                    onCapture = { bitmap, rotation -> viewModel.analyzeCapture(bitmap, rotation) },
                     onPickFromGallery = {
                         galleryLauncher.launch(
                             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
@@ -174,7 +173,7 @@ fun ScannerScreen(
 @Composable
 private fun CameraPreviewWithCapture(
     isRecognizing: Boolean,
-    onCapture: (Bitmap) -> Unit,
+    onCapture: (Bitmap, Int) -> Unit,
     onPickFromGallery: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -252,8 +251,8 @@ private fun CameraPreviewWithCapture(
                 onClick = {
                     if (isRecognizing) return@IconButton
                     scope.launch {
-                        val bitmap = captureBitmap(context, imageCapture, executor)
-                        if (bitmap != null) onCapture(bitmap)
+                        val captured = captureBitmap(context, imageCapture, executor)
+                        if (captured != null) onCapture(captured.bitmap, captured.rotationDegrees)
                     }
                 },
                 enabled = !isRecognizing,
@@ -293,18 +292,28 @@ private fun PermissionFallback(onRequestPermission: () -> Unit, onPickFromGaller
 }
 
 private const val TAG = "ScannerScreen"
+private const val CAPTURE_TARGET_MAX_DIMENSION = 1600
+
+/**
+ * Bundles the decoded capture bitmap with the rotation CameraX reports. We
+ * defer applying the rotation so the OCR path can hand it directly to
+ * [com.google.mlkit.vision.common.InputImage.fromBitmap], avoiding a second
+ * full-size bitmap allocation that a `Bitmap.createBitmap(..., matrix, true)`
+ * rotation would otherwise cost.
+ */
+private data class CapturedImage(val bitmap: Bitmap, val rotationDegrees: Int)
 
 private suspend fun captureBitmap(
-    context: Context,
+    @Suppress("UNUSED_PARAMETER") context: Context,
     imageCapture: ImageCapture,
     executor: ExecutorService,
-): Bitmap? = suspendCancellableCoroutine { cont ->
+): CapturedImage? = suspendCancellableCoroutine { cont ->
     imageCapture.takePicture(
         executor,
         object : ImageCapture.OnImageCapturedCallback() {
             override fun onCaptureSuccess(image: ImageProxy) {
-                val bitmap = image.use { it.toBitmap() }
-                cont.resume(bitmap)
+                val captured = image.use { it.toDownsampledCapture() }
+                cont.resume(captured)
             }
 
             override fun onError(exception: ImageCaptureException) {
@@ -316,20 +325,43 @@ private suspend fun captureBitmap(
 }
 
 /**
- * Decode [ImageProxy] → JPEG buffer → ARGB_8888 bitmap, applying the rotation
- * CameraX reports. Avoids the YUV conversion pitfalls by using the JPEG buffer
- * from `ImageCapture` directly (always the highest-quality path available).
+ * Decode [ImageProxy] → JPEG buffer → downsampled ARGB_8888 bitmap. We pair the
+ * result with [ImageProxy.getImageInfo]'s rotation so the OCR layer can pass
+ * it straight into ML Kit without allocating a rotated copy.
+ *
+ * A two-pass decode is used: a header-only bounds read to pick
+ * [android.graphics.BitmapFactory.Options.inSampleSize], then a single
+ * downsampled decode at ~[CAPTURE_TARGET_MAX_DIMENSION] px on the long edge.
+ * Typical 12 MP captures drop from a ~48 MB full-resolution bitmap to ~12 MB.
  */
-private fun ImageProxy.toBitmap(): Bitmap {
+private fun ImageProxy.toDownsampledCapture(): CapturedImage? {
     val buffer = planes[0].buffer
     val bytes = ByteArray(buffer.remaining())
     buffer.get(bytes)
-    val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-    val rotation = imageInfo.rotationDegrees
-    if (rotation == 0) return decoded
-    val matrix = Matrix().apply { postRotate(rotation.toFloat()) }
-    val rotated = Bitmap.createBitmap(decoded, 0, 0, decoded.width, decoded.height, matrix, true)
-    if (rotated !== decoded) decoded.recycle()
-    return rotated
+
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+    val width = bounds.outWidth
+    val height = bounds.outHeight
+    if (width <= 0 || height <= 0) return null
+
+    val decodeOptions = BitmapFactory.Options().apply {
+        inSampleSize = computeInSampleSize(width, height, CAPTURE_TARGET_MAX_DIMENSION)
+        inPreferredConfig = Bitmap.Config.ARGB_8888
+    }
+    val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decodeOptions) ?: return null
+    return CapturedImage(bitmap = bitmap, rotationDegrees = imageInfo.rotationDegrees)
+}
+
+private fun computeInSampleSize(width: Int, height: Int, maxDimension: Int): Int {
+    var sampleSize = 1
+    var w = width
+    var h = height
+    while (w / 2 >= maxDimension && h / 2 >= maxDimension) {
+        w /= 2
+        h /= 2
+        sampleSize *= 2
+    }
+    return sampleSize
 }
 

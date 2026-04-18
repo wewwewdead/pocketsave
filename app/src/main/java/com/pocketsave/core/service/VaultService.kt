@@ -1,5 +1,6 @@
 package com.pocketsave.core.service
 
+import androidx.room.withTransaction
 import com.pocketsave.common.util.ActiveItemSelectionKey
 import com.pocketsave.data.local.db.PocketSaveDatabase
 import com.pocketsave.data.local.entity.CartEntity
@@ -22,6 +23,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -49,6 +51,12 @@ class VaultService(
         val stores: List<StoreEntity> = emptyList(),
         /** Active (non-deleted) vault items across every category. */
         val items: List<ItemEntity> = emptyList(),
+        /**
+         * Items keyed by `id` for O(1) lookup. Pre-computed here (once per
+         * snapshot) so that per-frame consumers (cart detail, trip share,
+         * widget) don't each rebuild their own `items.associateBy { it.id }`.
+         */
+        val itemsById: Map<String, ItemEntity> = emptyMap(),
         /** Map from itemId → price options for fast per-row lookup. */
         val priceOptionsByItem: Map<String, List<PriceOptionEntity>> = emptyMap(),
         /** Non-deleted carts (planning, shopping, completed), newest first. */
@@ -166,22 +174,22 @@ class VaultService(
     /** Port of `ensureStoreExists(_:)` — convenience wrapper over [addStore]. */
     suspend fun ensureStoreExists(storeName: String) = addStore(storeName)
 
-    /** Port of `getAllStores()`, minus the paywall-specific ordering tweaks. */
+    /**
+     * Port of `getAllStores()`, minus the paywall-specific ordering tweaks.
+     *
+     * Replaces the legacy `listActive` + per-item `listForItem` N+1 loop with a
+     * single indexed join (`listActiveByVault`) that already returns all active
+     * vault item price options.
+     */
     suspend fun getAllStores(): List<String> {
         val vault = _state.value.vault ?: return emptyList()
         val rows = db.storeDao().listByVault(vault.uid).sortedByDescending { it.createdAt }
         val vaultNames = rows.map { it.name }
 
-        // Stores referenced by price options but missing from the stores table —
-        // mirrors the iOS union of `vault.stores` + item-derived stores.
-        val activeItems = db.itemDao().listActive(vault.uid)
-        val itemStores = activeItems.flatMap { item ->
-            db.priceOptionDao().listForItem(item.id).map { it.store }
-        }
+        val itemStores = db.priceOptionDao().listActiveByVault(vault.uid).map { it.store }
         val seen = vaultNames.map { it.lowercase() }.toMutableSet()
         val extras = itemStores
             .asSequence()
-            .map { it }
             .filter { it.lowercase() !in seen }
             .onEach { seen += it.lowercase() }
             .distinctBy { it.lowercase() }
@@ -198,24 +206,25 @@ class VaultService(
 
     // MARK: - Validation (VaultService+Validation.swift)
 
-    /** Port of `isItemNameDuplicate(_:store:excluding:)`. */
+    /**
+     * Port of `isItemNameDuplicate(_:store:excluding:)`.
+     *
+     * Replaces the legacy `listActive` + per-item `listForItem` N+1 loop with a
+     * single indexed join query that returns a count. The join uses the
+     * `(vaultUid, isDeleted)` composite on items and the unique `(itemId, store)`
+     * index on price options, so the whole check is one seek per index.
+     */
     suspend fun isItemNameDuplicate(
         name: String,
         store: String,
         excludingItemId: String? = null,
     ): Boolean {
         val vault = _state.value.vault ?: return false
-        val trimmedName = name.trim().lowercase()
-        val trimmedStore = store.trim().lowercase()
-
-        val activeItems = db.itemDao().listActive(vault.uid)
-        for (item in activeItems) {
-            if (excludingItemId != null && item.id == excludingItemId) continue
-            if (item.name.trim().lowercase() != trimmedName) continue
-            val priceOptions = db.priceOptionDao().listForItem(item.id)
-            if (priceOptions.any { it.store.trim().lowercase() == trimmedStore }) return true
-        }
-        return false
+        val trimmedName = name.trim()
+        val trimmedStore = store.trim()
+        if (trimmedName.isEmpty() || trimmedStore.isEmpty()) return false
+        return db.priceOptionDao()
+            .countDuplicateByNameAndStore(vault.uid, trimmedName, trimmedStore, excludingItemId) > 0
     }
 
     /**
@@ -318,54 +327,57 @@ class VaultService(
         if (!validation.isValid) return null
 
         val inserted = writeLock.withLock {
-            val category = resolveOrCreateCategory(vault.uid, trimmedCategoryName) ?: return@withLock null
+            db.withTransaction {
+                val category = resolveOrCreateCategory(vault.uid, trimmedCategoryName)
+                    ?: return@withTransaction null
 
-            val normalizedUnit = UnitSemantics.canonicalUnit(unit)
-            val normalizedPackageUnit = packageSizeUnit?.let(UnitSemantics::canonicalUnit)
-            val shouldStorePackageSize = !UnitSemantics.isContinuous(normalizedUnit)
-            val finalPackageSizeValue = if (
-                shouldStorePackageSize &&
-                !normalizedPackageUnit.isNullOrBlank() &&
-                packageSizeValue != null &&
-                packageSizeValue > 0.0
-            ) packageSizeValue else null
-            val finalPackageSizeUnit = if (finalPackageSizeValue != null) normalizedPackageUnit else null
-            val finalOuterPackagingUnit =
-                PackagingSemantics.canonicalPackagingUnit(packagingMetadata?.outerPackagingUnit)
-            val finalOuterPackagingConfidence = if (finalOuterPackagingUnit != null) {
-                PackagingSemantics.clampedConfidence(packagingMetadata?.outerPackagingConfidence)
-            } else null
-            val finalOuterPackagingSource = if (finalOuterPackagingUnit != null) {
-                packagingMetadata?.source?.raw
-            } else null
+                val normalizedUnit = UnitSemantics.canonicalUnit(unit)
+                val normalizedPackageUnit = packageSizeUnit?.let(UnitSemantics::canonicalUnit)
+                val shouldStorePackageSize = !UnitSemantics.isContinuous(normalizedUnit)
+                val finalPackageSizeValue = if (
+                    shouldStorePackageSize &&
+                    !normalizedPackageUnit.isNullOrBlank() &&
+                    packageSizeValue != null &&
+                    packageSizeValue > 0.0
+                ) packageSizeValue else null
+                val finalPackageSizeUnit = if (finalPackageSizeValue != null) normalizedPackageUnit else null
+                val finalOuterPackagingUnit =
+                    PackagingSemantics.canonicalPackagingUnit(packagingMetadata?.outerPackagingUnit)
+                val finalOuterPackagingConfidence = if (finalOuterPackagingUnit != null) {
+                    PackagingSemantics.clampedConfidence(packagingMetadata?.outerPackagingConfidence)
+                } else null
+                val finalOuterPackagingSource = if (finalOuterPackagingUnit != null) {
+                    packagingMetadata?.source?.raw
+                } else null
 
-            val newItem = ItemEntity(
-                id = UUID.randomUUID().toString(),
-                vaultUid = vault.uid,
-                categoryUid = category.uid,
-                name = trimmedName,
-                createdAt = Date(),
-                imageUri = imageUri,
-            )
-            db.itemDao().insert(newItem)
+                val newItem = ItemEntity(
+                    id = UUID.randomUUID().toString(),
+                    vaultUid = vault.uid,
+                    categoryUid = category.uid,
+                    name = trimmedName,
+                    createdAt = Date(),
+                    imageUri = imageUri,
+                )
+                db.itemDao().insert(newItem)
 
-            val priceOption = PriceOptionEntity(
-                uid = UUID.randomUUID().toString(),
-                itemId = newItem.id,
-                store = trimmedStore,
-                pricePerUnit = PricePerUnit(
-                    priceValue = price,
-                    unit = normalizedUnit,
-                    packageSizeValue = finalPackageSizeValue,
-                    packageSizeUnit = finalPackageSizeUnit,
-                    outerPackagingUnit = finalOuterPackagingUnit,
-                    outerPackagingConfidence = finalOuterPackagingConfidence,
-                    outerPackagingSource = finalOuterPackagingSource,
-                ),
-            )
-            db.priceOptionDao().insert(priceOption)
+                val priceOption = PriceOptionEntity(
+                    uid = UUID.randomUUID().toString(),
+                    itemId = newItem.id,
+                    store = trimmedStore,
+                    pricePerUnit = PricePerUnit(
+                        priceValue = price,
+                        unit = normalizedUnit,
+                        packageSizeValue = finalPackageSizeValue,
+                        packageSizeUnit = finalPackageSizeUnit,
+                        outerPackagingUnit = finalOuterPackagingUnit,
+                        outerPackagingConfidence = finalOuterPackagingConfidence,
+                        outerPackagingSource = finalOuterPackagingSource,
+                    ),
+                )
+                db.priceOptionDao().insert(priceOption)
 
-            newItem
+                newItem
+            }
         }
 
         if (inserted != null) {
@@ -416,32 +428,34 @@ class VaultService(
         if (!validation.isValid) return false
 
         val result = writeLock.withLock {
-            val existing = db.itemDao().findById(itemId) ?: return@withLock false
-            if (existing.isDeleted) return@withLock false
+            db.withTransaction {
+                val existing = db.itemDao().findById(itemId) ?: return@withTransaction false
+                if (existing.isDeleted) return@withTransaction false
 
-            val targetCategory = resolveOrCreateCategory(vault.uid, trimmedCategory) ?: return@withLock false
+                val targetCategory = resolveOrCreateCategory(vault.uid, trimmedCategory)
+                    ?: return@withTransaction false
 
-            val normalizedUnit = UnitSemantics.canonicalUnit(newUnit)
-            val normalizedPackageUnit = packageSizeUnit?.let(UnitSemantics::canonicalUnit)
-            val isContinuousUnit = UnitSemantics.isContinuous(normalizedUnit)
-            val normalizedOuterPackagingUnit =
-                PackagingSemantics.canonicalPackagingUnit(packagingMetadata?.outerPackagingUnit)
-            val normalizedOuterPackagingConfidence = if (normalizedOuterPackagingUnit != null) {
-                PackagingSemantics.clampedConfidence(packagingMetadata?.outerPackagingConfidence)
-            } else null
-            val normalizedOuterPackagingSource = if (normalizedOuterPackagingUnit != null) {
-                packagingMetadata?.source?.raw
-            } else null
+                val normalizedUnit = UnitSemantics.canonicalUnit(newUnit)
+                val normalizedPackageUnit = packageSizeUnit?.let(UnitSemantics::canonicalUnit)
+                val isContinuousUnit = UnitSemantics.isContinuous(normalizedUnit)
+                val normalizedOuterPackagingUnit =
+                    PackagingSemantics.canonicalPackagingUnit(packagingMetadata?.outerPackagingUnit)
+                val normalizedOuterPackagingConfidence = if (normalizedOuterPackagingUnit != null) {
+                    PackagingSemantics.clampedConfidence(packagingMetadata?.outerPackagingConfidence)
+                } else null
+                val normalizedOuterPackagingSource = if (normalizedOuterPackagingUnit != null) {
+                    packagingMetadata?.source?.raw
+                } else null
 
-            val updatedItem = existing.copy(
-                name = trimmedName,
-                categoryUid = targetCategory.uid,
-                imageUri = if (updateImage) imageUri else existing.imageUri,
-            )
-            db.itemDao().update(updatedItem)
+                val updatedItem = existing.copy(
+                    name = trimmedName,
+                    categoryUid = targetCategory.uid,
+                    imageUri = if (updateImage) imageUri else existing.imageUri,
+                )
+                db.itemDao().update(updatedItem)
 
-            val priceOptions = db.priceOptionDao().listForItem(itemId)
-            if (priceOptions.isNotEmpty()) {
+                val priceOptions = db.priceOptionDao().listForItem(itemId)
+                if (priceOptions.isNotEmpty()) {
                 // Mirror iOS: mutate the first price option in-place.
                 val primary = priceOptions.first()
                 val existingPpu = primary.pricePerUnit
@@ -494,7 +508,8 @@ class VaultService(
                     ),
                 )
             }
-            true
+                true
+            }
         }
 
         if (result) {
@@ -514,20 +529,24 @@ class VaultService(
      */
     suspend fun deleteItem(itemId: String): Boolean {
         val result = writeLock.withLock {
-            val existing = db.itemDao().findById(itemId) ?: return@withLock false
-            if (existing.isDeleted) return@withLock false
-            val fromCategoryName = existing.categoryUid?.let { db.categoryDao().findByUid(it)?.name }
-            db.itemDao().update(
-                existing.copy(
-                    isDeleted = true,
-                    deletedAt = Date(),
-                    deletedFromCategoryName = fromCategoryName,
-                    categoryUid = null,
-                ),
-            )
-            true
+            db.withTransaction {
+                val existing = db.itemDao().findById(itemId) ?: return@withTransaction false
+                if (existing.isDeleted) return@withTransaction false
+                val fromCategoryName = existing.categoryUid?.let { db.categoryDao().findByUid(it)?.name }
+                db.itemDao().update(
+                    existing.copy(
+                        isDeleted = true,
+                        deletedAt = Date(),
+                        deletedFromCategoryName = fromCategoryName,
+                        categoryUid = null,
+                    ),
+                )
+                true
+            }
         }
-        if (result) publishSnapshotRefresh()
+        // Targeted: only the one item row moves from `items` to `deletedItems`;
+        // categories / stores / carts are untouched.
+        if (result) refreshItem(itemId)
         return result
     }
 
@@ -543,7 +562,9 @@ class VaultService(
             db.itemDao().delete(existing)
             true
         }
-        if (result) publishSnapshotRefresh()
+        // Targeted: refreshItem's null-path drops the row from both lists and
+        // evicts the price-option map entry (FK cascade already removed rows).
+        if (result) refreshItem(itemId)
         return result
     }
 
@@ -608,7 +629,7 @@ class VaultService(
                 sortOrder = nextSortOrder,
             )
             db.categoryDao().insert(created)
-            publishSnapshotRefresh()
+            refreshCategoriesSnapshot()
             created
         }
     }
@@ -643,7 +664,7 @@ class VaultService(
                 colorHex = colorHex?.trim()?.takeIf { it.isNotEmpty() },
             )
             db.categoryDao().insert(created)
-            publishSnapshotRefresh()
+            refreshCategoriesSnapshot()
             created
         }
     }
@@ -685,7 +706,7 @@ class VaultService(
                 colorHex = normalizedColor,
             )
             db.categoryDao().update(updated)
-            publishSnapshotRefresh()
+            refreshCategoriesSnapshot()
             updated
         }
     }
@@ -700,26 +721,28 @@ class VaultService(
         val normalized = normalizedCategoryName(name)
 
         val success = writeLock.withLock {
-            val category = db.categoryDao().listByVault(vault.uid)
-                .firstOrNull { normalizedCategoryName(it.name) == normalized }
-                ?: return@withLock false
-            if (isSystemCategory(category.name)) return@withLock false
+            db.withTransaction {
+                val category = db.categoryDao().listByVault(vault.uid)
+                    .firstOrNull { normalizedCategoryName(it.name) == normalized }
+                    ?: return@withTransaction false
+                if (isSystemCategory(category.name)) return@withTransaction false
 
-            val items = db.itemDao().listByCategory(category.uid)
-            val now = Date()
-            for (item in items) {
-                if (item.isDeleted) continue
-                db.itemDao().update(
-                    item.copy(
-                        isDeleted = true,
-                        deletedAt = now,
-                        deletedFromCategoryName = category.name,
-                        categoryUid = null,
-                    ),
-                )
+                val items = db.itemDao().listByCategory(category.uid)
+                val now = Date()
+                for (item in items) {
+                    if (item.isDeleted) continue
+                    db.itemDao().update(
+                        item.copy(
+                            isDeleted = true,
+                            deletedAt = now,
+                            deletedFromCategoryName = category.name,
+                            categoryUid = null,
+                        ),
+                    )
+                }
+                db.categoryDao().delete(category)
+                true
             }
-            db.categoryDao().delete(category)
-            true
         }
         if (success) publishSnapshotRefresh()
         return success
@@ -767,7 +790,8 @@ class VaultService(
             status = CartStatus.PLANNING.raw,
         )
         writeLock.withLock { db.cartDao().insert(cart) }
-        publishSnapshotRefresh()
+        // Targeted: only the one new cart needs to appear in the snapshot.
+        refreshCart(cart.id)
         return cart
     }
 
@@ -781,14 +805,83 @@ class VaultService(
         budget: Double,
         activeItems: Map<String, Double>,
     ): CartEntity? {
-        val cart = createCart(name, budget) ?: return null
-        for ((selectionKey, quantity) in activeItems) {
+        val vault = _state.value.vault ?: return null
+
+        // Preserve the legacy behaviour where multiple selection keys for the
+        // same itemId (different stores) collapse into a single cart row whose
+        // store is the first one seen and whose quantity is the sum. That was
+        // the net effect of looping addVaultItemToCart per key — it found the
+        // existing row each iteration and bumped the quantity in place.
+        data class PlannedEntry(val itemId: String, val firstStore: String?, val quantity: Double)
+        val planned = LinkedHashMap<String, PlannedEntry>()
+        for ((selectionKey, qty) in activeItems) {
             val parsed = ActiveItemSelectionKey.parse(selectionKey)
-            val item = findItemById(parsed.itemId) ?: continue
-            addVaultItemToCart(cart.id, item, quantity, parsed.store)
+            val prior = planned[parsed.itemId]
+            planned[parsed.itemId] = if (prior == null) {
+                PlannedEntry(parsed.itemId, parsed.store, qty)
+            } else {
+                PlannedEntry(prior.itemId, prior.firstStore, prior.quantity + qty)
+            }
         }
-        recomputeCartTotals(cart.id)
-        return db.cartDao().findById(cart.id)
+        val itemIds = planned.keys.toList()
+
+        val now = Date()
+        val newCart = CartEntity(
+            id = UUID.randomUUID().toString(),
+            vaultUid = vault.uid,
+            name = name.trim(),
+            budget = budget,
+            fulfillmentStatus = 0.0,
+            createdAt = now,
+            updatedAt = now,
+            status = CartStatus.PLANNING.raw,
+        )
+
+        val result = writeLock.withLock {
+            db.withTransaction {
+                db.cartDao().insert(newCart)
+
+                if (itemIds.isNotEmpty()) {
+                    // Three batched reads up-front; nothing per-item.
+                    val itemsById = db.itemDao().findByIds(itemIds).associateBy { it.id }
+                    val priceOptionsByItem = priceOptionsFor(itemIds)
+                    val categoryUids = itemsById.values.mapNotNull { it.categoryUid }.distinct()
+                    val categoriesByUid = if (categoryUids.isEmpty()) emptyMap()
+                    else db.categoryDao().findByUids(categoryUids).associateBy { it.uid }
+
+                    for (entry in planned.values) {
+                        val item = itemsById[entry.itemId] ?: continue
+                        val options = priceOptionsByItem[entry.itemId].orEmpty()
+                        val store = entry.firstStore?.trim()?.takeIf { it.isNotEmpty() }
+                            ?: options.firstOrNull()?.store
+                            ?: "Unknown Store"
+                        val matching = options.firstOrNull { it.store == store }
+                        val categoryName = item.categoryUid?.let { categoriesByUid[it]?.name }
+                        db.cartItemDao().insert(
+                            CartItemEntity(
+                                uid = UUID.randomUUID().toString(),
+                                cartId = newCart.id,
+                                itemId = item.id,
+                                addedAt = Date(),
+                                quantity = entry.quantity,
+                                isFulfilled = false,
+                                plannedStore = store,
+                                plannedPrice = matching?.pricePerUnit?.priceValue,
+                                plannedUnit = matching?.pricePerUnit?.unit,
+                                vaultItemNameSnapshot = item.name,
+                                vaultItemCategorySnapshot = categoryName,
+                                addedDuringShopping = false,
+                            ),
+                        )
+                    }
+                }
+
+                recomputeCartTotalsInternal(newCart.id)
+            }
+        }
+        // Targeted: only the new cart + its items need to land in the snapshot.
+        refreshCart(newCart.id)
+        return result
     }
 
     /**
@@ -936,7 +1029,8 @@ class VaultService(
         writeLock.withLock {
             db.cartDao().update(cart.copy(name = trimmed, updatedAt = Date()))
         }
-        publishSnapshotRefresh()
+        // Cart items and the rest of the snapshot are untouched.
+        refreshCartRow(cartId)
         return true
     }
 
@@ -966,7 +1060,10 @@ class VaultService(
                 db.cartDao().delete(cart)
             }
         }
-        publishSnapshotRefresh()
+        // Targeted: completed carts move from `carts` to `deletedCarts`; planning
+        // carts disappear entirely. applyCartPatch handles both via the nullable/
+        // isDeleted cases.
+        refreshCart(cartId)
         return true
     }
 
@@ -984,7 +1081,9 @@ class VaultService(
                 cart.copy(isDeleted = false, deletedAt = null, updatedAt = Date()),
             )
         }
-        publishSnapshotRefresh()
+        // Targeted: cart moves from `deletedCarts` back to `carts`; its items are
+        // still in `cartItemsByCart[cartId]` if the map kept them.
+        refreshCart(cartId)
         return true
     }
 
@@ -995,7 +1094,9 @@ class VaultService(
     suspend fun permanentlyDeleteCart(cartId: String): Boolean {
         val cart = db.cartDao().findById(cartId) ?: return false
         writeLock.withLock { db.cartDao().delete(cart) }
-        publishSnapshotRefresh()
+        // Cart + cart_items (via FK cascade) are gone — refreshCart's null-path
+        // clears them from both lists and evicts cartItemsByCart[cartId].
+        refreshCart(cartId)
         return true
     }
 
@@ -1013,24 +1114,26 @@ class VaultService(
         val vaultUid = item.vaultUid
 
         val restoredCategoryUid = writeLock.withLock {
-            val targetCategoryName = item.deletedFromCategoryName
-            val targetCategoryUid = targetCategoryName
-                ?.let { db.categoryDao().findByName(vaultUid, it)?.uid }
-                ?: run {
-                    // Category got renamed / deleted — rehome into the first
-                    // available category (iOS falls back to `GroceryCategory.allCases.first.title`).
-                    val fallbackName = GroceryCategory.entries.first().title
-                    resolveOrCreateCategory(vaultUid, fallbackName)?.uid
-                }
-            db.itemDao().update(
-                item.copy(
-                    isDeleted = false,
-                    deletedAt = null,
-                    deletedFromCategoryName = null,
-                    categoryUid = targetCategoryUid,
-                ),
-            )
-            targetCategoryUid
+            db.withTransaction {
+                val targetCategoryName = item.deletedFromCategoryName
+                val targetCategoryUid = targetCategoryName
+                    ?.let { db.categoryDao().findByName(vaultUid, it)?.uid }
+                    ?: run {
+                        // Category got renamed / deleted — rehome into the first
+                        // available category (iOS falls back to `GroceryCategory.allCases.first.title`).
+                        val fallbackName = GroceryCategory.entries.first().title
+                        resolveOrCreateCategory(vaultUid, fallbackName)?.uid
+                    }
+                db.itemDao().update(
+                    item.copy(
+                        isDeleted = false,
+                        deletedAt = null,
+                        deletedFromCategoryName = null,
+                        categoryUid = targetCategoryUid,
+                    ),
+                )
+                targetCategoryUid
+            }
         }
         publishSnapshotRefresh()
         return restoredCategoryUid != null
@@ -1042,6 +1145,24 @@ class VaultService(
      * update. Returns the refreshed cart entity for callers that need it.
      */
     suspend fun recomputeCartTotals(cartId: String): CartEntity? {
+        val result = writeLock.withLock {
+            db.withTransaction { recomputeCartTotalsInternal(cartId) }
+        }
+        // Targeted refresh: only the one cart's row + items changed. Other carts,
+        // vault items, categories, stores, and trash are all untouched so the rest
+        // of the snapshot can be reused via structural sharing.
+        refreshCart(cartId)
+        return result
+    }
+
+    /**
+     * Lock-free / snapshot-free inner body of [recomputeCartTotals]. Callers are
+     * responsible for holding [writeLock] and for calling [publishSnapshotRefresh]
+     * exactly once after their batch completes. Used by multi-step transactions
+     * that already hold the lock — nesting [writeLock] would deadlock the mutex,
+     * and publishing intermediate snapshots would undo the transactional batching.
+     */
+    private suspend fun recomputeCartTotalsInternal(cartId: String): CartEntity? {
         val cart = db.cartDao().findById(cartId) ?: return null
         val items = db.cartItemDao().listByCart(cartId)
         val status = CartStatus.fromRaw(cart.status)
@@ -1057,8 +1178,7 @@ class VaultService(
         }
 
         val updated = cart.copy(fulfillmentStatus = fulfillment, updatedAt = Date())
-        writeLock.withLock { db.cartDao().update(updated) }
-        publishSnapshotRefresh()
+        db.cartDao().update(updated)
         return updated
     }
 
@@ -1114,39 +1234,48 @@ class VaultService(
      * where missing, then flips status + `startedAt`.
      */
     suspend fun startShopping(cartId: String): Boolean {
-        val cart = db.cartDao().findById(cartId) ?: return false
-        if (CartStatus.fromRaw(cart.status) != CartStatus.PLANNING) return false
+        val result = writeLock.withLock {
+            db.withTransaction {
+                val cart = db.cartDao().findById(cartId) ?: return@withTransaction false
+                if (CartStatus.fromRaw(cart.status) != CartStatus.PLANNING) return@withTransaction false
 
-        writeLock.withLock {
-            val items = db.cartItemDao().listByCart(cartId)
-            // cleanupShoppingOnlyItems
-            for (item in items.filter { it.isShoppingOnlyItem }) {
-                db.cartItemDao().delete(item)
-            }
-            val remaining = items.filterNot { it.isShoppingOnlyItem }
-            for (item in remaining) {
-                // capturePlannedData: fill in planned price/unit from current vault price options
-                val vaultOptions = db.priceOptionDao().listForItem(item.itemId)
-                val match = vaultOptions.firstOrNull { it.store == item.plannedStore }
-                db.cartItemDao().update(
-                    item.copy(
-                        originalPlanningQuantity = item.originalPlanningQuantity ?: item.quantity,
-                        plannedPrice = item.plannedPrice ?: match?.pricePerUnit?.priceValue,
-                        plannedUnit = item.plannedUnit ?: match?.pricePerUnit?.unit,
+                val items = db.cartItemDao().listByCart(cartId)
+                // cleanupShoppingOnlyItems — hard-delete the shopping-only additions.
+                for (item in items.filter { it.isShoppingOnlyItem }) {
+                    db.cartItemDao().delete(item)
+                }
+                val remaining = items.filterNot { it.isShoppingOnlyItem }
+
+                // Batched price-option fetch: 1 query instead of N.
+                val priceOptionsByItem = priceOptionsFor(remaining.map { it.itemId })
+
+                for (item in remaining) {
+                    // capturePlannedData: fill in planned price/unit from current vault price options.
+                    val match = priceOptionsByItem[item.itemId]
+                        .orEmpty()
+                        .firstOrNull { it.store == item.plannedStore }
+                    db.cartItemDao().update(
+                        item.copy(
+                            originalPlanningQuantity = item.originalPlanningQuantity ?: item.quantity,
+                            plannedPrice = item.plannedPrice ?: match?.pricePerUnit?.priceValue,
+                            plannedUnit = item.plannedUnit ?: match?.pricePerUnit?.unit,
+                        ),
+                    )
+                }
+                val now = Date()
+                db.cartDao().update(
+                    cart.copy(
+                        status = CartStatus.SHOPPING.raw,
+                        startedAt = now,
+                        updatedAt = now,
                     ),
                 )
+                recomputeCartTotalsInternal(cartId)
+                true
             }
-            val now = Date()
-            db.cartDao().update(
-                cart.copy(
-                    status = CartStatus.SHOPPING.raw,
-                    startedAt = now,
-                    updatedAt = now,
-                ),
-            )
         }
-        recomputeCartTotals(cartId)
-        return true
+        if (result) refreshCart(cartId)
+        return result
     }
 
     /**
@@ -1157,46 +1286,55 @@ class VaultService(
      * the current vault, then flips status back to `.planning`.
      */
     suspend fun returnToPlanning(cartId: String): Boolean {
-        val cart = db.cartDao().findById(cartId) ?: return false
-        if (CartStatus.fromRaw(cart.status) != CartStatus.SHOPPING) return false
+        val result = writeLock.withLock {
+            db.withTransaction {
+                val cart = db.cartDao().findById(cartId) ?: return@withTransaction false
+                if (CartStatus.fromRaw(cart.status) != CartStatus.SHOPPING) return@withTransaction false
 
-        writeLock.withLock {
-            val items = db.cartItemDao().listByCart(cartId)
-            for (item in items) {
-                if (item.addedDuringShopping || item.isShoppingOnlyItem) {
-                    db.cartItemDao().delete(item)
-                    continue
+                val items = db.cartItemDao().listByCart(cartId)
+                // Batched price-option fetch for all survivors: 1 query instead of N.
+                val survivors = items.filterNot { it.addedDuringShopping || it.isShoppingOnlyItem }
+                val priceOptionsByItem = priceOptionsFor(survivors.map { it.itemId })
+
+                for (item in items) {
+                    if (item.addedDuringShopping || item.isShoppingOnlyItem) {
+                        db.cartItemDao().delete(item)
+                        continue
+                    }
+                    val match = priceOptionsByItem[item.itemId]
+                        .orEmpty()
+                        .firstOrNull { it.store == item.plannedStore }
+                    val restoredQuantity = item.originalPlanningQuantity ?: item.quantity
+                    db.cartItemDao().update(
+                        item.copy(
+                            quantity = restoredQuantity,
+                            originalPlanningQuantity = null,
+                            isFulfilled = false,
+                            isSkippedDuringShopping = false,
+                            wasEditedDuringShopping = false,
+                            addedDuringShopping = false,
+                            actualPrice = null,
+                            actualQuantity = null,
+                            actualUnit = null,
+                            actualStore = null,
+                            plannedPrice = match?.pricePerUnit?.priceValue ?: item.plannedPrice,
+                            plannedUnit = match?.pricePerUnit?.unit ?: item.plannedUnit,
+                        ),
+                    )
                 }
-                val vaultOptions = db.priceOptionDao().listForItem(item.itemId)
-                val match = vaultOptions.firstOrNull { it.store == item.plannedStore }
-                val restoredQuantity = item.originalPlanningQuantity ?: item.quantity
-                db.cartItemDao().update(
-                    item.copy(
-                        quantity = restoredQuantity,
-                        originalPlanningQuantity = null,
-                        isFulfilled = false,
-                        isSkippedDuringShopping = false,
-                        wasEditedDuringShopping = false,
-                        addedDuringShopping = false,
-                        actualPrice = null,
-                        actualQuantity = null,
-                        actualUnit = null,
-                        actualStore = null,
-                        plannedPrice = match?.pricePerUnit?.priceValue ?: item.plannedPrice,
-                        plannedUnit = match?.pricePerUnit?.unit ?: item.plannedUnit,
+                db.cartDao().update(
+                    cart.copy(
+                        status = CartStatus.PLANNING.raw,
+                        startedAt = null,
+                        updatedAt = Date(),
                     ),
                 )
+                recomputeCartTotalsInternal(cartId)
+                true
             }
-            db.cartDao().update(
-                cart.copy(
-                    status = CartStatus.PLANNING.raw,
-                    startedAt = null,
-                    updatedAt = Date(),
-                ),
-            )
         }
-        recomputeCartTotals(cartId)
-        return true
+        if (result) refreshCart(cartId)
+        return result
     }
 
     /**
@@ -1206,59 +1344,77 @@ class VaultService(
      * name/category on each cart item, then flips status + `completedAt`.
      */
     suspend fun completeShopping(cartId: String): Boolean {
-        val cart = db.cartDao().findById(cartId) ?: return false
-        if (CartStatus.fromRaw(cart.status) != CartStatus.SHOPPING) return false
+        val result = writeLock.withLock {
+            db.withTransaction {
+                val cart = db.cartDao().findById(cartId) ?: return@withTransaction false
+                if (CartStatus.fromRaw(cart.status) != CartStatus.SHOPPING) return@withTransaction false
 
-        writeLock.withLock {
-            val items = db.cartItemDao().listByCart(cartId)
-            for (item in items) {
-                val capturedStore = item.actualStore ?: item.plannedStore
-                val capturedPrice = item.actualPrice ?: item.plannedPrice
-                val capturedQuantity = item.actualQuantity ?: item.quantity
-                val capturedUnit = item.actualUnit ?: item.plannedUnit
+                val items = db.cartItemDao().listByCart(cartId)
 
-                var nameSnapshot = item.vaultItemNameSnapshot
-                var categorySnapshot = item.vaultItemCategorySnapshot
-                if (!item.isShoppingOnlyItem) {
-                    if (nameSnapshot == null) {
-                        nameSnapshot = db.itemDao().findById(item.itemId)?.name
+                // Batched pre-fetch: all vault items + their categories needed to
+                // backfill the name/category snapshots. 1+1 queries instead of N*2.
+                val vaultItemIds = items
+                    .filterNot { it.isShoppingOnlyItem }
+                    .map { it.itemId }
+                    .distinct()
+                val itemsById = if (vaultItemIds.isEmpty()) emptyMap()
+                else db.itemDao().findByIds(vaultItemIds).associateBy { it.id }
+                val categoryUids = itemsById.values.mapNotNull { it.categoryUid }.distinct()
+                val categoriesByUid = if (categoryUids.isEmpty()) emptyMap()
+                else db.categoryDao().findByUids(categoryUids).associateBy { it.uid }
+
+                for (item in items) {
+                    val capturedStore = item.actualStore ?: item.plannedStore
+                    val capturedPrice = item.actualPrice ?: item.plannedPrice
+                    val capturedQuantity = item.actualQuantity ?: item.quantity
+                    val capturedUnit = item.actualUnit ?: item.plannedUnit
+
+                    var nameSnapshot = item.vaultItemNameSnapshot
+                    var categorySnapshot = item.vaultItemCategorySnapshot
+                    if (!item.isShoppingOnlyItem) {
+                        val vaultItem = itemsById[item.itemId]
+                        if (nameSnapshot == null) nameSnapshot = vaultItem?.name
+                        if (categorySnapshot == null) {
+                            categorySnapshot = vaultItem?.categoryUid?.let { categoriesByUid[it]?.name }
+                        }
                     }
-                    if (categorySnapshot == null) {
-                        categorySnapshot = getCategoryNameForItem(item.itemId)
+
+                    db.cartItemDao().update(
+                        item.copy(
+                            actualStore = capturedStore,
+                            actualPrice = capturedPrice,
+                            actualQuantity = capturedQuantity,
+                            actualUnit = capturedUnit,
+                            vaultItemNameSnapshot = nameSnapshot,
+                            vaultItemCategorySnapshot = categorySnapshot,
+                        ),
+                    )
+
+                    if (!item.isShoppingOnlyItem && item.isFulfilled && !item.isSkippedDuringShopping) {
+                        // writeBackVaultPrices uses the indexed unique (itemId,store)
+                        // lookup, so the per-item cost is a single row read — no N+1.
+                        writeBackVaultPrices(
+                            itemId = item.itemId,
+                            actualStore = capturedStore,
+                            actualPrice = capturedPrice,
+                            actualUnit = capturedUnit,
+                        )
                     }
                 }
-
-                db.cartItemDao().update(
-                    item.copy(
-                        actualStore = capturedStore,
-                        actualPrice = capturedPrice,
-                        actualQuantity = capturedQuantity,
-                        actualUnit = capturedUnit,
-                        vaultItemNameSnapshot = nameSnapshot,
-                        vaultItemCategorySnapshot = categorySnapshot,
+                val now = Date()
+                db.cartDao().update(
+                    cart.copy(
+                        status = CartStatus.COMPLETED.raw,
+                        completedAt = now,
+                        updatedAt = now,
                     ),
                 )
-
-                if (!item.isShoppingOnlyItem && item.isFulfilled && !item.isSkippedDuringShopping) {
-                    writeBackVaultPrices(
-                        itemId = item.itemId,
-                        actualStore = capturedStore,
-                        actualPrice = capturedPrice,
-                        actualUnit = capturedUnit,
-                    )
-                }
+                recomputeCartTotalsInternal(cartId)
+                true
             }
-            val now = Date()
-            db.cartDao().update(
-                cart.copy(
-                    status = CartStatus.COMPLETED.raw,
-                    completedAt = now,
-                    updatedAt = now,
-                ),
-            )
         }
-        recomputeCartTotals(cartId)
-        return true
+        if (result) publishSnapshotRefresh()
+        return result
     }
 
     /**
@@ -1267,34 +1423,38 @@ class VaultService(
      * active-cart-limit check is intentionally omitted.
      */
     suspend fun reopenCart(cartId: String): Boolean {
-        val cart = db.cartDao().findById(cartId) ?: return false
-        if (CartStatus.fromRaw(cart.status) != CartStatus.COMPLETED) return false
+        val result = writeLock.withLock {
+            db.withTransaction {
+                val cart = db.cartDao().findById(cartId) ?: return@withTransaction false
+                if (CartStatus.fromRaw(cart.status) != CartStatus.COMPLETED) return@withTransaction false
 
-        writeLock.withLock {
-            val items = db.cartItemDao().listByCart(cartId)
-            for (item in items) {
-                db.cartItemDao().update(
-                    item.copy(
-                        actualPrice = null,
-                        actualQuantity = null,
-                        actualUnit = null,
-                        actualStore = null,
-                        isFulfilled = false,
+                val items = db.cartItemDao().listByCart(cartId)
+                for (item in items) {
+                    db.cartItemDao().update(
+                        item.copy(
+                            actualPrice = null,
+                            actualQuantity = null,
+                            actualUnit = null,
+                            actualStore = null,
+                            isFulfilled = false,
+                        ),
+                    )
+                }
+                db.cartDao().update(
+                    cart.copy(
+                        status = CartStatus.SHOPPING.raw,
+                        completedAt = null,
+                        updatedAt = Date(),
+                        isDeleted = false,
+                        deletedAt = null,
                     ),
                 )
+                recomputeCartTotalsInternal(cartId)
+                true
             }
-            db.cartDao().update(
-                cart.copy(
-                    status = CartStatus.SHOPPING.raw,
-                    completedAt = null,
-                    updatedAt = Date(),
-                    isDeleted = false,
-                    deletedAt = null,
-                ),
-            )
         }
-        recomputeCartTotals(cartId)
-        return true
+        if (result) refreshCart(cartId)
+        return result
     }
 
     /** Port of `toggleItemFulfillment(cart:itemId:)`. */
@@ -1543,9 +1703,10 @@ class VaultService(
         actualUnit: String?,
     ) {
         if (actualStore.isNullOrBlank() || actualPrice == null || actualUnit == null) return
-        val priceOptions = db.priceOptionDao().listForItem(itemId)
+        // Single indexed row lookup against the unique (itemId,store) index rather
+        // than fetching every price option for the item.
+        val existing = db.priceOptionDao().findByItemAndStore(itemId, actualStore)
         val normalizedUnit = UnitSemantics.canonicalUnit(actualUnit)
-        val existing = priceOptions.firstOrNull { it.store == actualStore }
         if (existing != null) {
             val isContinuous = UnitSemantics.isContinuous(normalizedUnit)
             db.priceOptionDao().update(
@@ -1606,9 +1767,22 @@ class VaultService(
         var actualTotal = 0.0
         val priceChanges = mutableListOf<PriceChange>()
 
+        // Batched pre-fetch: one IN-list query for every vault item referenced,
+        // plus one for the fallback name lookups when the name snapshot is missing.
+        val vaultItemIds = items.filterNot { it.isShoppingOnlyItem }.map { it.itemId }.distinct()
+        val priceOptionsByItem = priceOptionsFor(vaultItemIds)
+        val itemsNeedingNameLookup = items
+            .filter { !it.isShoppingOnlyItem && it.vaultItemNameSnapshot == null }
+            .map { it.itemId }
+            .distinct()
+        val itemsById = if (itemsNeedingNameLookup.isEmpty()) emptyMap()
+        else db.itemDao().findByIds(itemsNeedingNameLookup).associateBy { it.id }
+
         for (item in items) {
             val wasPlanned = !item.isShoppingOnlyItem && !item.addedDuringShopping
-            val vaultOptions = if (!item.isShoppingOnlyItem) db.priceOptionDao().listForItem(item.itemId) else emptyList()
+            val vaultOptions = if (!item.isShoppingOnlyItem) {
+                priceOptionsByItem[item.itemId].orEmpty()
+            } else emptyList()
             val plannedPrice = if (wasPlanned) {
                 item.plannedPrice
                     ?: vaultOptions.firstOrNull { it.store == item.plannedStore }?.pricePerUnit?.priceValue
@@ -1648,7 +1822,7 @@ class VaultService(
                     item.shoppingOnlyName ?: "Unknown"
                 } else {
                     item.vaultItemNameSnapshot
-                        ?: db.itemDao().findById(item.itemId)?.name
+                        ?: itemsById[item.itemId]?.name
                         ?: "Unknown"
                 }
                 priceChanges += PriceChange(
@@ -1669,6 +1843,17 @@ class VaultService(
     }
 
     // MARK: - Private helpers
+
+    /**
+     * Batched price-option fetch grouped by itemId, used wherever a loop would
+     * otherwise call [PriceOptionDao.listForItem] once per item. Returns an
+     * empty map for empty inputs so callers can always safely index into it.
+     */
+    private suspend fun priceOptionsFor(itemIds: List<String>): Map<String, List<PriceOptionEntity>> {
+        if (itemIds.isEmpty()) return emptyMap()
+        val distinct = itemIds.distinct()
+        return db.priceOptionDao().listForItems(distinct).groupBy { it.itemId }
+    }
 
     private suspend fun resolveOrCreateCategory(
         vaultUid: String,
@@ -1743,6 +1928,7 @@ class VaultService(
             categories = categories,
             stores = stores,
             items = items,
+            itemsById = items.associateBy { it.id },
             priceOptionsByItem = priceOptions.groupBy { it.itemId },
             carts = activeCarts,
             cartItemsByCart = cartItems.groupBy { it.cartId },
@@ -1758,6 +1944,139 @@ class VaultService(
         val vault = snapshot.vault ?: return
         val stores = db.storeDao().listByVault(vault.uid)
         _state.value = snapshot.copy(stores = stores)
+    }
+
+    // MARK: - Targeted refreshes (Phase 3)
+    //
+    // These patch individual slices of [Snapshot] in-place rather than re-reading
+    // every table via [buildSnapshot]. The mutex-based writers hand off to them
+    // AFTER their transaction commits, so the database reads they do pick up the
+    // latest committed state. Patches are applied via [MutableStateFlow.update]
+    // (atomic CAS) so concurrent targeted refreshes for different entities are
+    // safe against each other.
+
+    /**
+     * Refreshes exactly one cart's row + its items in the current snapshot.
+     * Handles every transition (create / update / soft-delete / hard-delete /
+     * restore) so callers don't need to case-split.
+     */
+    private suspend fun refreshCart(cartId: String) {
+        val cart = db.cartDao().findById(cartId)
+        val items = if (cart == null) emptyList() else db.cartItemDao().listByCart(cartId)
+        applyCartPatch(cartId, cart, items)
+    }
+
+    /**
+     * Refreshes only the cart row (preserves the cached `cartItemsByCart` entry).
+     * Used when the mutation only touches cart-level fields (name, budget,
+     * fulfillment totals) and cannot have changed any cart item.
+     */
+    private suspend fun refreshCartRow(cartId: String) {
+        val cart = db.cartDao().findById(cartId)
+        val items = if (cart == null) emptyList() else _state.value.cartItemsByCart[cartId].orEmpty()
+        applyCartPatch(cartId, cart, items)
+    }
+
+    private fun applyCartPatch(cartId: String, cart: CartEntity?, items: List<CartItemEntity>) {
+        _state.update { s -> patchCart(s, cartId, cart, items) }
+    }
+
+    /**
+     * Refreshes one item's row + its price options. Handles soft-delete /
+     * restore transitions between `items` and `deletedItems`, and hard-delete
+     * (which also evicts the price-option map entry since FK cascade removes
+     * the rows).
+     */
+    private suspend fun refreshItem(itemId: String) {
+        val item = db.itemDao().findById(itemId)
+        val priceOptions = if (item == null) emptyList() else db.priceOptionDao().listForItem(itemId)
+        applyItemPatch(itemId, item, priceOptions)
+    }
+
+    private fun applyItemPatch(
+        itemId: String,
+        item: ItemEntity?,
+        priceOptions: List<PriceOptionEntity>,
+    ) {
+        _state.update { s -> patchItem(s, itemId, item, priceOptions) }
+    }
+
+    companion object {
+        /**
+         * Pure snapshot patcher exposed for unit tests. Applies one cart's new
+         * state (row + items) to [snapshot], preserving every other field and
+         * the DAO-matching ordering for `carts` and `deletedCarts`. Passing
+         * `cart = null` represents a hard delete: the cart leaves both lists
+         * and the `cartItemsByCart` entry is evicted.
+         */
+        internal fun patchCart(
+            snapshot: Snapshot,
+            cartId: String,
+            cart: CartEntity?,
+            items: List<CartItemEntity>,
+        ): Snapshot {
+            val activeWithout = snapshot.carts.filterNot { it.id == cartId }
+            val deletedWithout = snapshot.deletedCarts.filterNot { it.id == cartId }
+            val newActive = if (cart != null && !cart.isDeleted) {
+                // Match the DAO's ORDER BY createdAt DESC ordering.
+                (activeWithout + cart).sortedByDescending { it.createdAt }
+            } else activeWithout
+            val newDeleted = if (cart != null && cart.isDeleted) {
+                // Match the DAO's ORDER BY deletedAt DESC ordering (nulls last).
+                (deletedWithout + cart).sortedByDescending { it.deletedAt }
+            } else deletedWithout
+            val newItemsByCart = if (cart == null) {
+                snapshot.cartItemsByCart - cartId
+            } else {
+                snapshot.cartItemsByCart + (cartId to items)
+            }
+            return snapshot.copy(
+                carts = newActive,
+                deletedCarts = newDeleted,
+                cartItemsByCart = newItemsByCart,
+            )
+        }
+
+        /**
+         * Pure snapshot patcher exposed for unit tests. Applies one vault
+         * item's new state (row + price options) to [snapshot]. `items` and
+         * `itemsById` always stay in sync: soft-deleted and hard-deleted rows
+         * leave both. `priceOptionsByItem` is updated when the item exists,
+         * evicted when it doesn't.
+         */
+        internal fun patchItem(
+            snapshot: Snapshot,
+            itemId: String,
+            item: ItemEntity?,
+            priceOptions: List<PriceOptionEntity>,
+        ): Snapshot {
+            val activeWithout = snapshot.items.filterNot { it.id == itemId }
+            val deletedWithout = snapshot.deletedItems.filterNot { it.id == itemId }
+            val newActive = if (item != null && !item.isDeleted) activeWithout + item else activeWithout
+            val newDeleted = if (item != null && item.isDeleted) deletedWithout + item else deletedWithout
+            val newPriceMap = when {
+                item == null -> snapshot.priceOptionsByItem - itemId
+                else -> snapshot.priceOptionsByItem + (itemId to priceOptions)
+            }
+            // `itemsById` mirrors `items` — active rows only. Removed or
+            // soft-deleted items drop out of the lookup.
+            val newItemsById = when {
+                item == null || item.isDeleted -> snapshot.itemsById - itemId
+                else -> snapshot.itemsById + (itemId to item)
+            }
+            return snapshot.copy(
+                items = newActive,
+                itemsById = newItemsById,
+                deletedItems = newDeleted,
+                priceOptionsByItem = newPriceMap,
+            )
+        }
+    }
+
+    private suspend fun refreshCategoriesSnapshot() {
+        val vault = _state.value.vault ?: return
+        val categories = db.categoryDao().listByVault(vault.uid)
+        _state.update { s -> s.copy(categories = categories) }
     }
 
     /**

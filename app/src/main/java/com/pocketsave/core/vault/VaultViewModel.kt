@@ -1,5 +1,6 @@
 package com.pocketsave.core.vault
 
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -115,37 +116,59 @@ class VaultViewModel(
         search: String,
         selectedCategoryName: String?,
     ): VaultUiState {
-        val orderedCategories = vault.categories.sortedBy { it.sortOrder }
-        val visibleCategories = computeVisibleCategories(orderedCategories)
+        val visibleCategories = computeVisibleCategories(vault.categories)
 
         val priceOptionsByItem = vault.priceOptionsByItem
-        val activeItemIds = activeCartItems.keys
-            .map { ActiveItemSelectionKey.itemId(fromKey = it) }
-            .toSet()
+
+        // Parse every selection key exactly once. Previously the inner row
+        // builder filtered `activeCartItems` per-item via `filterKeys`, which
+        // parsed every key O(items) times; now we build the per-item sub-map in
+        // a single linear pass and reuse each item's entry directly.
+        val activeItemIds: Set<String>
+        val quantityByItemId: Map<String, Map<String, Double>>
+        if (activeCartItems.isEmpty()) {
+            activeItemIds = emptySet()
+            quantityByItemId = emptyMap()
+        } else {
+            val idSet = HashSet<String>(activeCartItems.size)
+            val qtyMap = HashMap<String, MutableMap<String, Double>>(activeCartItems.size)
+            for ((key, qty) in activeCartItems) {
+                val itemId = ActiveItemSelectionKey.itemId(fromKey = key)
+                idSet += itemId
+                qtyMap.getOrPut(itemId) { LinkedHashMap() }[key] = qty
+            }
+            activeItemIds = idSet
+            quantityByItemId = qtyMap
+        }
+
+        // Pre-group items by categoryUid so each section walks only its own
+        // items instead of re-scanning the full vault list per category.
+        val itemsByCategoryUid = vault.items.groupBy { it.categoryUid }
+        val searchActive = search.isNotBlank()
 
         val sections = visibleCategories.map { category ->
-            val items = vault.items
-                .asSequence()
-                .filter { it.categoryUid == category.uid }
-                .filter { if (search.isBlank()) true else it.name.contains(search, ignoreCase = true) }
-                .sortedByDescending { it.createdAt }
-                .map { item ->
-                    val options = priceOptionsByItem[item.id].orEmpty()
-                    val quantityByKey = activeCartItems
-                        .filterKeys { ActiveItemSelectionKey.itemId(fromKey = it) == item.id }
-                    VaultItemRow(
-                        item = item,
-                        priceOptions = options,
-                        quantityByKey = quantityByKey,
-                    )
-                }
-                .toList()
+            val categoryItems = itemsByCategoryUid[category.uid].orEmpty()
+            val filtered = if (searchActive) {
+                categoryItems.filter { it.name.contains(search, ignoreCase = true) }
+            } else {
+                categoryItems
+            }
+            val sorted = filtered.sortedByDescending { it.createdAt }
+            val rows = sorted.map { item ->
+                VaultItemRow(
+                    item = item,
+                    priceOptions = priceOptionsByItem[item.id].orEmpty(),
+                    quantityByKey = quantityByItemId[item.id].orEmpty(),
+                )
+            }
+            var activeInSection = 0
+            for (row in rows) if (row.item.id in activeItemIds) activeInSection++
 
             VaultCategorySection(
                 category = category,
                 iconKey = vaultService.displayIconKeyForCategory(category),
-                activeItemCount = items.count { it.item.id in activeItemIds },
-                items = items,
+                activeItemCount = activeInSection,
+                items = rows,
             )
         }
 
@@ -197,6 +220,7 @@ class VaultViewModel(
     }
 }
 
+@Immutable
 data class VaultUiState(
     val isReady: Boolean = false,
     val categories: List<CategoryEntity> = emptyList(),
@@ -207,6 +231,7 @@ data class VaultUiState(
     val selectedCategoryName: String? = null,
 )
 
+@Immutable
 data class VaultCategorySection(
     val category: CategoryEntity,
     val iconKey: String,
@@ -214,6 +239,7 @@ data class VaultCategorySection(
     val items: List<VaultItemRow>,
 )
 
+@Immutable
 data class VaultItemRow(
     val item: ItemEntity,
     val priceOptions: List<PriceOptionEntity>,

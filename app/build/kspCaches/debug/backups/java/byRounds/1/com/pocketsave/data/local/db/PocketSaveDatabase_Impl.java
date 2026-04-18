@@ -66,7 +66,7 @@ public final class PocketSaveDatabase_Impl extends PocketSaveDatabase {
   @Override
   @NonNull
   protected SupportSQLiteOpenHelper createOpenHelper(@NonNull final DatabaseConfiguration config) {
-    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(2) {
+    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(3) {
       @Override
       public void createAllTables(@NonNull final SupportSQLiteDatabase db) {
         db.execSQL("CREATE TABLE IF NOT EXISTS `users` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `vaultUid` TEXT NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`vaultUid`) REFERENCES `vaults`(`uid`) ON UPDATE NO ACTION ON DELETE CASCADE )");
@@ -80,22 +80,24 @@ public final class PocketSaveDatabase_Impl extends PocketSaveDatabase {
         db.execSQL("CREATE TABLE IF NOT EXISTS `items` (`id` TEXT NOT NULL, `vaultUid` TEXT NOT NULL, `categoryUid` TEXT, `name` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `isTemporaryShoppingItem` INTEGER NOT NULL, `shoppingPrice` REAL, `shoppingUnit` TEXT, `isOnSale` INTEGER NOT NULL, `notes` TEXT, `saleType` TEXT, `discountValue` REAL, `regularPrice` REAL, `isDeleted` INTEGER NOT NULL, `deletedAt` INTEGER, `deletedFromCategoryName` TEXT, `isPlanSuppressed` INTEGER NOT NULL, `planSuppressedAt` INTEGER, `planSuppressedReason` TEXT, `imageUri` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`categoryUid`) REFERENCES `categories`(`uid`) ON UPDATE NO ACTION ON DELETE SET NULL , FOREIGN KEY(`vaultUid`) REFERENCES `vaults`(`uid`) ON UPDATE NO ACTION ON DELETE CASCADE )");
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_items_categoryUid` ON `items` (`categoryUid`)");
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_items_vaultUid` ON `items` (`vaultUid`)");
-        db.execSQL("CREATE INDEX IF NOT EXISTS `index_items_isDeleted` ON `items` (`isDeleted`)");
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_items_vaultUid_isDeleted` ON `items` (`vaultUid`, `isDeleted`)");
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_items_categoryUid_isDeleted` ON `items` (`categoryUid`, `isDeleted`)");
         db.execSQL("CREATE TABLE IF NOT EXISTS `price_options` (`uid` TEXT NOT NULL, `itemId` TEXT NOT NULL, `store` TEXT NOT NULL, `priceValue` REAL NOT NULL, `unit` TEXT NOT NULL, `packageSizeValue` REAL, `packageSizeUnit` TEXT, `outerPackagingUnit` TEXT, `outerPackagingConfidence` REAL, `outerPackagingSource` TEXT, PRIMARY KEY(`uid`), FOREIGN KEY(`itemId`) REFERENCES `items`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )");
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_price_options_itemId` ON `price_options` (`itemId`)");
         db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_price_options_itemId_store` ON `price_options` (`itemId`, `store`)");
         db.execSQL("CREATE TABLE IF NOT EXISTS `carts` (`id` TEXT NOT NULL, `vaultUid` TEXT NOT NULL, `name` TEXT NOT NULL, `budget` REAL NOT NULL, `fulfillmentStatus` REAL NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `startedAt` INTEGER, `completedAt` INTEGER, `status` INTEGER NOT NULL, `isDeleted` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`vaultUid`) REFERENCES `vaults`(`uid`) ON UPDATE NO ACTION ON DELETE CASCADE )");
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_carts_vaultUid` ON `carts` (`vaultUid`)");
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_carts_status` ON `carts` (`status`)");
-        db.execSQL("CREATE INDEX IF NOT EXISTS `index_carts_isDeleted` ON `carts` (`isDeleted`)");
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_carts_vaultUid_isDeleted` ON `carts` (`vaultUid`, `isDeleted`)");
         db.execSQL("CREATE TABLE IF NOT EXISTS `cart_items` (`uid` TEXT NOT NULL, `cartId` TEXT NOT NULL, `itemId` TEXT NOT NULL, `addedAt` INTEGER, `quantity` REAL NOT NULL, `isFulfilled` INTEGER NOT NULL, `isSkippedDuringShopping` INTEGER NOT NULL, `plannedStore` TEXT NOT NULL, `plannedPrice` REAL, `plannedUnit` TEXT, `actualStore` TEXT, `actualPrice` REAL, `actualQuantity` REAL, `actualUnit` TEXT, `wasEditedDuringShopping` INTEGER NOT NULL, `isShoppingOnlyItem` INTEGER NOT NULL, `shoppingOnlyName` TEXT, `shoppingOnlyStore` TEXT, `shoppingOnlyPrice` REAL, `shoppingOnlyUnit` TEXT, `shoppingOnlyCategory` TEXT, `shoppingOnlyImageUri` TEXT, `vaultItemNameSnapshot` TEXT, `vaultItemCategorySnapshot` TEXT, `originalPlanningQuantity` REAL, `addedDuringShopping` INTEGER NOT NULL, `fulfillmentAnimationState` INTEGER NOT NULL, `fulfillmentStartTime` INTEGER, `shouldShowCheckmark` INTEGER NOT NULL, `shouldStrikethrough` INTEGER NOT NULL, `isOnSale` INTEGER NOT NULL, `notes` TEXT, `saleType` TEXT, `discountValue` REAL, `regularPrice` REAL, PRIMARY KEY(`uid`), FOREIGN KEY(`cartId`) REFERENCES `carts`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )");
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_cart_items_cartId` ON `cart_items` (`cartId`)");
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_cart_items_itemId` ON `cart_items` (`itemId`)");
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_cart_items_cartId_addedAt` ON `cart_items` (`cartId`, `addedAt`)");
         db.execSQL("CREATE TABLE IF NOT EXISTS `deleted_cart_item_snapshots` (`uid` TEXT NOT NULL, `cartId` TEXT NOT NULL, `itemId` TEXT, `quantity` REAL NOT NULL, `plannedStore` TEXT NOT NULL, `plannedPrice` REAL, `plannedUnit` TEXT, `actualStore` TEXT, `actualPrice` REAL, `actualQuantity` REAL, `actualUnit` TEXT, `wasEditedDuringShopping` INTEGER NOT NULL, `wasFulfilled` INTEGER NOT NULL, PRIMARY KEY(`uid`), FOREIGN KEY(`itemId`) REFERENCES `items`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )");
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_deleted_cart_item_snapshots_itemId` ON `deleted_cart_item_snapshots` (`itemId`)");
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_deleted_cart_item_snapshots_cartId` ON `deleted_cart_item_snapshots` (`cartId`)");
         db.execSQL("CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)");
-        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7ff88265609adb98310b107bc8eca986')");
+        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '88918d05485937b6d204f96722b57524')");
       }
 
       @Override
@@ -241,10 +243,11 @@ public final class PocketSaveDatabase_Impl extends PocketSaveDatabase {
         final HashSet<TableInfo.ForeignKey> _foreignKeysItems = new HashSet<TableInfo.ForeignKey>(2);
         _foreignKeysItems.add(new TableInfo.ForeignKey("categories", "SET NULL", "NO ACTION", Arrays.asList("categoryUid"), Arrays.asList("uid")));
         _foreignKeysItems.add(new TableInfo.ForeignKey("vaults", "CASCADE", "NO ACTION", Arrays.asList("vaultUid"), Arrays.asList("uid")));
-        final HashSet<TableInfo.Index> _indicesItems = new HashSet<TableInfo.Index>(3);
+        final HashSet<TableInfo.Index> _indicesItems = new HashSet<TableInfo.Index>(4);
         _indicesItems.add(new TableInfo.Index("index_items_categoryUid", false, Arrays.asList("categoryUid"), Arrays.asList("ASC")));
         _indicesItems.add(new TableInfo.Index("index_items_vaultUid", false, Arrays.asList("vaultUid"), Arrays.asList("ASC")));
-        _indicesItems.add(new TableInfo.Index("index_items_isDeleted", false, Arrays.asList("isDeleted"), Arrays.asList("ASC")));
+        _indicesItems.add(new TableInfo.Index("index_items_vaultUid_isDeleted", false, Arrays.asList("vaultUid", "isDeleted"), Arrays.asList("ASC", "ASC")));
+        _indicesItems.add(new TableInfo.Index("index_items_categoryUid_isDeleted", false, Arrays.asList("categoryUid", "isDeleted"), Arrays.asList("ASC", "ASC")));
         final TableInfo _infoItems = new TableInfo("items", _columnsItems, _foreignKeysItems, _indicesItems);
         final TableInfo _existingItems = TableInfo.read(db, "items");
         if (!_infoItems.equals(_existingItems)) {
@@ -293,7 +296,7 @@ public final class PocketSaveDatabase_Impl extends PocketSaveDatabase {
         final HashSet<TableInfo.Index> _indicesCarts = new HashSet<TableInfo.Index>(3);
         _indicesCarts.add(new TableInfo.Index("index_carts_vaultUid", false, Arrays.asList("vaultUid"), Arrays.asList("ASC")));
         _indicesCarts.add(new TableInfo.Index("index_carts_status", false, Arrays.asList("status"), Arrays.asList("ASC")));
-        _indicesCarts.add(new TableInfo.Index("index_carts_isDeleted", false, Arrays.asList("isDeleted"), Arrays.asList("ASC")));
+        _indicesCarts.add(new TableInfo.Index("index_carts_vaultUid_isDeleted", false, Arrays.asList("vaultUid", "isDeleted"), Arrays.asList("ASC", "ASC")));
         final TableInfo _infoCarts = new TableInfo("carts", _columnsCarts, _foreignKeysCarts, _indicesCarts);
         final TableInfo _existingCarts = TableInfo.read(db, "carts");
         if (!_infoCarts.equals(_existingCarts)) {
@@ -339,9 +342,10 @@ public final class PocketSaveDatabase_Impl extends PocketSaveDatabase {
         _columnsCartItems.put("regularPrice", new TableInfo.Column("regularPrice", "REAL", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
         final HashSet<TableInfo.ForeignKey> _foreignKeysCartItems = new HashSet<TableInfo.ForeignKey>(1);
         _foreignKeysCartItems.add(new TableInfo.ForeignKey("carts", "CASCADE", "NO ACTION", Arrays.asList("cartId"), Arrays.asList("id")));
-        final HashSet<TableInfo.Index> _indicesCartItems = new HashSet<TableInfo.Index>(2);
+        final HashSet<TableInfo.Index> _indicesCartItems = new HashSet<TableInfo.Index>(3);
         _indicesCartItems.add(new TableInfo.Index("index_cart_items_cartId", false, Arrays.asList("cartId"), Arrays.asList("ASC")));
         _indicesCartItems.add(new TableInfo.Index("index_cart_items_itemId", false, Arrays.asList("itemId"), Arrays.asList("ASC")));
+        _indicesCartItems.add(new TableInfo.Index("index_cart_items_cartId_addedAt", false, Arrays.asList("cartId", "addedAt"), Arrays.asList("ASC", "ASC")));
         final TableInfo _infoCartItems = new TableInfo("cart_items", _columnsCartItems, _foreignKeysCartItems, _indicesCartItems);
         final TableInfo _existingCartItems = TableInfo.read(db, "cart_items");
         if (!_infoCartItems.equals(_existingCartItems)) {
@@ -377,7 +381,7 @@ public final class PocketSaveDatabase_Impl extends PocketSaveDatabase {
         }
         return new RoomOpenHelper.ValidationResult(true, null);
       }
-    }, "7ff88265609adb98310b107bc8eca986", "5b329ef1402b34aed37b1f724193d069");
+    }, "88918d05485937b6d204f96722b57524", "d25c7c447f93d7863427f2a5ddb34d59");
     final SupportSQLiteOpenHelper.Configuration _sqliteConfig = SupportSQLiteOpenHelper.Configuration.builder(config.context).name(config.name).callback(_openCallback).build();
     final SupportSQLiteOpenHelper _helper = config.sqliteOpenHelperFactory.create(_sqliteConfig);
     return _helper;

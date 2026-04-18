@@ -51,8 +51,12 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -83,6 +87,18 @@ import kotlinx.coroutines.launch
  * `EditItemSheet`, `ItemFormContent`). Backed by [ItemFormViewModel] so the
  * validation + packaging payload semantics stay in lockstep with iOS.
  */
+/**
+ * Hand-off payload emitted by [ItemFormSheet.onSaved] when the user has
+ * successfully *added* (not edited) an item. Carries the inserted [ItemEntity]
+ * plus the centre of the Save button in root coordinates so the caller can
+ * start the fly-to-list animation. `null` means "no flight" — always the case
+ * for edits and for any save that didn't complete.
+ */
+data class ItemFormFlightHint(
+    val insertedItem: ItemEntity,
+    val saveButtonCenter: Offset,
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ItemFormSheet(
@@ -90,7 +106,7 @@ fun ItemFormSheet(
     existing: ItemEntity?,
     initialCategoryName: String?,
     onDismiss: () -> Unit,
-    onSaved: () -> Unit,
+    onSaved: (flightHint: ItemFormFlightHint?) -> Unit,
     textRecognitionService: TextRecognitionService? = null,
     packagingClassifier: PackagingClassifier? = null,
 ) {
@@ -106,6 +122,9 @@ fun ItemFormSheet(
     var isProcessingImage by remember { mutableStateOf(false) }
     var imageError by remember { mutableStateOf<String?>(null) }
     var pendingCapture by remember { mutableStateOf<ImageStorage.CaptureTarget?>(null) }
+    // Captured by `Modifier.onGloballyPositioned` on the Save button so the
+    // add-item flight animation knows where the ghost should start from.
+    var saveButtonCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
     // Hydrate form state — on open (edit) or on pre-selected category (add).
     LaunchedEffect(existing?.id) {
@@ -341,12 +360,19 @@ fun ItemFormSheet(
                 Button(
                     onClick = {
                         if (!formVm.attemptSubmission()) return@Button
+                        // Freeze the Save button's current root-coord centre so
+                        // the flight animation can start from there even after
+                        // the sheet begins dismissing.
+                        val originCenter = saveButtonCoords
+                            ?.takeIf { it.isAttached }
+                            ?.boundsInRoot()
+                            ?.center
                         scope.launch {
                             isSaving = true
                             val payload = formVm.packageSizePayloadForPersistence
                             val price = formVm.itemPrice.toDoubleOrNull() ?: 0.0
                             val category = formVm.selectedCategoryName ?: return@launch
-                            val ok = if (existing == null) {
+                            val insertedItem: ItemEntity? = if (existing == null) {
                                 vaultService.addItem(
                                     name = formVm.itemName,
                                     toCategoryName = category,
@@ -357,9 +383,10 @@ fun ItemFormSheet(
                                     packageSizeUnit = payload.unit,
                                     packagingMetadata = formVm.metadataForPersistence,
                                     imageUri = formVm.selectedImageUri,
-                                ) != null
-                            } else {
-                                val updated = vaultService.updateItem(
+                                )
+                            } else null
+                            val updated: Boolean = if (existing != null) {
+                                val r = vaultService.updateItem(
                                     itemId = existing.id,
                                     newName = formVm.itemName,
                                     newCategoryName = category,
@@ -374,16 +401,20 @@ fun ItemFormSheet(
                                     imageUri = formVm.selectedImageUri,
                                     updateImage = true,
                                 )
-                                if (updated && existing.imageUri != null &&
+                                if (r && existing.imageUri != null &&
                                     existing.imageUri != formVm.selectedImageUri
                                 ) {
                                     imageStorage.deleteByUri(existing.imageUri)
                                 }
-                                updated
-                            }
+                                r
+                            } else false
+                            val ok = insertedItem != null || updated
                             isSaving = false
                             if (ok) {
-                                onSaved()
+                                val hint = if (insertedItem != null && originCenter != null) {
+                                    ItemFormFlightHint(insertedItem, originCenter)
+                                } else null
+                                onSaved(hint)
                             } else {
                                 val recheck = vaultService.validateItemName(
                                     name = formVm.itemName,
@@ -396,7 +427,9 @@ fun ItemFormSheet(
                         }
                     },
                     enabled = formVm.isFormValid && duplicateError == null && !isSaving && !isProcessingImage,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .onGloballyPositioned { saveButtonCoords = it },
                 ) { Text(if (existing == null) "Save" else "Update") }
             }
 

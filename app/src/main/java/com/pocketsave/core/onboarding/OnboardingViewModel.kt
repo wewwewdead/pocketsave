@@ -13,15 +13,18 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-enum class OnboardingStep { WELCOME, LAST_STORE, FIRST_ITEM, DONE }
+/**
+ * The seven-step onboarding flow. [WELCOME], [VALUE] and [HANDOFF] are framing
+ * moments (no progress bar); [CURRENCY], [STORE], [ITEM] and [TRIP] are the
+ * data-entry steps the progress bar tracks.
+ */
+enum class OnboardingStep { WELCOME, VALUE, CURRENCY, STORE, ITEM, TRIP, HANDOFF }
 
 /**
- * Port of `PocketSave/Core/Onboarding/ViewModel/OnboardingViewModel.swift`.
- *
- * Keeps one instance of [ItemFormViewModel] as its child (matching the iOS
- * `formViewModel` property) and drives the step machine + debounced duplicate
- * check. Animation/haptic controls collapse into a few `mutableStateOf` flags;
- * screens drive their own Compose animations from there.
+ * Host for the onboarding state machine and the persistence calls that run as
+ * the user advances through the flow. Holds one child [ItemFormViewModel] for
+ * the first-item step, and captures the created cart id so the landing Home
+ * screen can point its first-run hints at the real trip.
  */
 class OnboardingViewModel(
     private val vaultService: VaultService,
@@ -33,17 +36,48 @@ class OnboardingViewModel(
     var currentStep: OnboardingStep by mutableStateOf(OnboardingStep.WELCOME)
         private set
 
-    var showPageIndicator: Boolean by mutableStateOf(false)
     var showError: Boolean by mutableStateOf(false)
     var duplicateError: String? by mutableStateOf(null)
         private set
     var isCheckingDuplicate: Boolean by mutableStateOf(false)
         private set
 
+    // Currency — persisted at the end of the CURRENCY step. Held in VM state
+    // so going back to change it doesn't require re-reading from DataStore.
+    var currencyCode: String? by mutableStateOf(null)
+        private set
+    var currencySymbol: String? by mutableStateOf(null)
+        private set
+
+    // Trip — captured on the TRIP step.
+    var tripName: String by mutableStateOf("")
+    var tripBudget: String by mutableStateOf("")
+    var tripError: String? by mutableStateOf(null)
+        private set
+
     /**
-     * Set to true once the first item has been persisted, so the host can swap
-     * the Onboarding NavHost destination for Home. Mirrors the role of
-     * `UserDefaults.standard.hasCompletedOnboarding = true` on iOS.
+     * Monotonically-incrementing counters that feed
+     * [com.pocketsave.core.onboarding.motion.onboardingCelebrationPulse].
+     * Flipping a boolean is enough for a single fire, but counters mean we can
+     * trigger again later (e.g. if the user backs up and re-saves) without
+     * extra state plumbing.
+     */
+    var itemCelebrationTrigger: Int by mutableStateOf(0)
+        private set
+    var tripCelebrationTrigger: Int by mutableStateOf(0)
+        private set
+
+    /** Set once the ITEM step persists so later steps can attach to it. */
+    var createdItemId: String? by mutableStateOf(null)
+        private set
+
+    /** Set once the TRIP step persists; read by Home first-run hints. */
+    var createdCartId: String? by mutableStateOf(null)
+        private set
+
+    /**
+     * Flips true once the HANDOFF step is entered. The container has a
+     * LaunchedEffect on this flag that invokes the nav callback to Home.
      */
     var onboardingComplete: Boolean by mutableStateOf(false)
         private set
@@ -69,32 +103,57 @@ class OnboardingViewModel(
     val isFormValidForCompletion: Boolean
         get() = formViewModel.isFormValid && duplicateError == null
 
+    /** 0f..1f progress across the four data-entry steps, or null for framing steps. */
+    val progressForStep: Float?
+        get() = when (currentStep) {
+            OnboardingStep.WELCOME, OnboardingStep.VALUE, OnboardingStep.HANDOFF -> null
+            OnboardingStep.CURRENCY -> 0.25f
+            OnboardingStep.STORE -> 0.50f
+            OnboardingStep.ITEM -> 0.75f
+            OnboardingStep.TRIP -> 1.00f
+        }
+
     // MARK: - Navigation
 
-    fun navigateToWelcome() {
-        currentStep = OnboardingStep.WELCOME
-        showPageIndicator = false
-    }
+    fun navigateToWelcome() { currentStep = OnboardingStep.WELCOME }
+    fun navigateToValue() { currentStep = OnboardingStep.VALUE }
+    fun navigateToCurrency() { currentStep = OnboardingStep.CURRENCY }
+    fun navigateToStore() { currentStep = OnboardingStep.STORE }
+    fun navigateToItem() { currentStep = OnboardingStep.ITEM }
+    fun navigateToTrip() { currentStep = OnboardingStep.TRIP }
+    fun navigateToHandoff() { currentStep = OnboardingStep.HANDOFF }
 
-    fun navigateToLastStore() {
-        currentStep = OnboardingStep.LAST_STORE
-        showPageIndicator = true
-    }
-
-    fun navigateToFirstItemDataScreen() {
-        currentStep = OnboardingStep.FIRST_ITEM
-    }
-
-    fun navigateToDone() {
-        showPageIndicator = false
-        currentStep = OnboardingStep.DONE
-    }
-
+    /** Smart back — steps one place closer to Welcome. No-op on framing steps. */
     fun navigateBack() {
-        currentStep = OnboardingStep.LAST_STORE
+        currentStep = when (currentStep) {
+            OnboardingStep.WELCOME -> OnboardingStep.WELCOME
+            OnboardingStep.VALUE -> OnboardingStep.WELCOME
+            OnboardingStep.CURRENCY -> OnboardingStep.VALUE
+            OnboardingStep.STORE -> OnboardingStep.CURRENCY
+            OnboardingStep.ITEM -> OnboardingStep.STORE
+            OnboardingStep.TRIP -> OnboardingStep.ITEM
+            OnboardingStep.HANDOFF -> OnboardingStep.HANDOFF
+        }
     }
 
-    // MARK: - Store error (iOS `triggerStoreNameError` without haptics/shake)
+    // MARK: - Currency persistence (CURRENCY step)
+
+    fun selectCurrency(code: String, symbol: String) {
+        currencyCode = code
+        currencySymbol = symbol
+    }
+
+    fun commitCurrencyAndContinue() {
+        val code = currencyCode
+        val symbol = currencySymbol
+        if (code.isNullOrBlank() || symbol.isNullOrBlank()) return
+        viewModelScope.launch {
+            preferences.setCurrency(code, symbol)
+            navigateToStore()
+        }
+    }
+
+    // MARK: - Store errors (animated error tint in-form)
 
     fun triggerStoreNameError() {
         showError = true
@@ -104,11 +163,10 @@ class OnboardingViewModel(
         }
     }
 
-    // MARK: - Duplicate validation (iOS `checkForDuplicateItemName`)
+    // MARK: - Duplicate validation
 
     /**
-     * Port of `checkForDuplicateItemName`. Debounces 500ms by default so every
-     * keystroke doesn't hit the database.
+     * Debounces 500ms by default so every keystroke doesn't hit the database.
      */
     fun checkForDuplicateItemName(itemName: String, debounce: Boolean = true) {
         duplicateCheckJob?.cancel()
@@ -150,7 +208,6 @@ class OnboardingViewModel(
         duplicateError = null
     }
 
-    /** Port of `validateFinalItemName`. */
     suspend fun validateFinalItemName(): Boolean {
         val result = vaultService.validateItemName(
             name = formViewModel.itemName,
@@ -170,24 +227,31 @@ class OnboardingViewModel(
         formViewModel.storeName = ""
     }
 
-    // MARK: - Finish
+    // MARK: - Item step persistence
 
     /**
-     * Port of the two iOS calls made by `FirstItemFinishButton`:
-     * `viewModel.saveInitialData(vaultService:)` + `viewModel.saveOnboardingItemData()`.
-     * Writes the store and the item to Room, persists the onboarding completion
-     * flag, then flips [onboardingComplete] so the host can navigate to Home.
+     * Persists the first store + first item through [VaultService], fires the
+     * save celebration, and advances to the Trip step. The cart + completion
+     * flags are set later by [createTripAndFinish].
+     *
+     * Guards: item name must validate, category + price must be filled. On
+     * failure the VM publishes [duplicateError] so the screen renders a hint.
      */
-    fun finishOnboarding() {
+    fun saveItemAndContinueToTrip() {
         viewModelScope.launch {
+            if (createdItemId != null) {
+                // Re-entering after a back navigation — the item is already
+                // persisted. Skip straight to the trip step.
+                navigateToTrip()
+                return@launch
+            }
+
             if (!validateFinalItemName()) return@launch
 
             val categoryName = formViewModel.selectedCategoryName ?: return@launch
             val price = formViewModel.itemPrice.toDoubleOrNull() ?: return@launch
             val payload = formViewModel.packageSizePayloadForPersistence
 
-            // Persist the first store explicitly so `vault.stores` is populated
-            // even if the user backs out before the item save finishes.
             vaultService.addStore(formViewModel.storeName)
 
             val created = vaultService.addItem(
@@ -211,11 +275,69 @@ class OnboardingViewModel(
                 return@launch
             }
 
+            createdItemId = created.id
+            itemCelebrationTrigger += 1
+            // A gentle default trip name the user can still edit on the next step.
+            if (tripName.isBlank()) {
+                tripName = suggestedTripName(formViewModel.storeName)
+            }
+            navigateToTrip()
+        }
+    }
+
+    // MARK: - Trip step persistence
+
+    /**
+     * Creates the first shopping trip, adds the saved first item to it, marks
+     * onboarding complete, and advances to the Handoff step. The container
+     * observes [onboardingComplete] and routes to Home once we set it.
+     */
+    fun createTripAndFinish() {
+        val itemId = createdItemId
+        if (itemId == null) {
+            tripError = "Save your first item before creating a trip."
+            return
+        }
+
+        val trimmedName = tripName.trim()
+        if (trimmedName.isEmpty()) {
+            tripError = "Give your trip a name."
+            return
+        }
+        val budget = tripBudget.toDoubleOrNull() ?: 0.0
+
+        viewModelScope.launch {
+            tripError = null
+
+            val cart = vaultService.createCart(name = trimmedName, budget = budget)
+            if (cart == null) {
+                tripError = "Couldn't start the trip. Please try again."
+                return@launch
+            }
+
+            val item = vaultService.state.value.items.firstOrNull { it.id == itemId }
+            if (item != null) {
+                vaultService.addVaultItemToCart(
+                    cartId = cart.id,
+                    item = item,
+                    quantity = 1.0,
+                    selectedStore = formViewModel.storeName.ifBlank { null },
+                )
+            }
+
+            createdCartId = cart.id
+            tripCelebrationTrigger += 1
             preferences.setHasCompletedOnboarding(true)
+            preferences.setShouldShowFirstRunHints(true)
             preferences.setUserName(vaultService.state.value.user?.name ?: "Default User")
-            navigateToDone()
+            navigateToHandoff()
             onboardingComplete = true
         }
+    }
+
+    private fun suggestedTripName(storeName: String): String {
+        if (storeName.isBlank()) return "Weekly shop"
+        return "$storeName run"
     }
 
     // MARK: - Reset
@@ -225,10 +347,18 @@ class OnboardingViewModel(
         duplicateCheckJob = null
 
         currentStep = OnboardingStep.WELCOME
-        showPageIndicator = false
         showError = false
         duplicateError = null
         isCheckingDuplicate = false
+        currencyCode = null
+        currencySymbol = null
+        tripName = ""
+        tripBudget = ""
+        tripError = null
+        itemCelebrationTrigger = 0
+        tripCelebrationTrigger = 0
+        createdItemId = null
+        createdCartId = null
         onboardingComplete = false
         formViewModel.resetForm()
     }

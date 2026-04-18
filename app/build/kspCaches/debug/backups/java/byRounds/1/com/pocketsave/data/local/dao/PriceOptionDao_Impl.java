@@ -12,15 +12,18 @@ import androidx.room.RoomSQLiteQuery;
 import androidx.room.SharedSQLiteStatement;
 import androidx.room.util.CursorUtil;
 import androidx.room.util.DBUtil;
+import androidx.room.util.StringUtil;
 import androidx.sqlite.db.SupportSQLiteStatement;
 import com.pocketsave.data.local.entity.PriceOptionEntity;
 import com.pocketsave.data.local.entity.PricePerUnit;
 import java.lang.Class;
 import java.lang.Double;
 import java.lang.Exception;
+import java.lang.Integer;
 import java.lang.Object;
 import java.lang.Override;
 import java.lang.String;
+import java.lang.StringBuilder;
 import java.lang.SuppressWarnings;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -358,6 +361,96 @@ public final class PriceOptionDao_Impl implements PriceOptionDao {
   }
 
   @Override
+  public Object listForItems(final List<String> itemIds,
+      final Continuation<? super List<PriceOptionEntity>> $completion) {
+    final StringBuilder _stringBuilder = StringUtil.newStringBuilder();
+    _stringBuilder.append("SELECT * FROM price_options WHERE itemId IN (");
+    final int _inputSize = itemIds.size();
+    StringUtil.appendPlaceholders(_stringBuilder, _inputSize);
+    _stringBuilder.append(")");
+    final String _sql = _stringBuilder.toString();
+    final int _argCount = 0 + _inputSize;
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, _argCount);
+    int _argIndex = 1;
+    for (String _item : itemIds) {
+      _statement.bindString(_argIndex, _item);
+      _argIndex++;
+    }
+    final CancellationSignal _cancellationSignal = DBUtil.createCancellationSignal();
+    return CoroutinesRoom.execute(__db, false, _cancellationSignal, new Callable<List<PriceOptionEntity>>() {
+      @Override
+      @NonNull
+      public List<PriceOptionEntity> call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final int _cursorIndexOfUid = CursorUtil.getColumnIndexOrThrow(_cursor, "uid");
+          final int _cursorIndexOfItemId = CursorUtil.getColumnIndexOrThrow(_cursor, "itemId");
+          final int _cursorIndexOfStore = CursorUtil.getColumnIndexOrThrow(_cursor, "store");
+          final int _cursorIndexOfPriceValue = CursorUtil.getColumnIndexOrThrow(_cursor, "priceValue");
+          final int _cursorIndexOfUnit = CursorUtil.getColumnIndexOrThrow(_cursor, "unit");
+          final int _cursorIndexOfPackageSizeValue = CursorUtil.getColumnIndexOrThrow(_cursor, "packageSizeValue");
+          final int _cursorIndexOfPackageSizeUnit = CursorUtil.getColumnIndexOrThrow(_cursor, "packageSizeUnit");
+          final int _cursorIndexOfOuterPackagingUnit = CursorUtil.getColumnIndexOrThrow(_cursor, "outerPackagingUnit");
+          final int _cursorIndexOfOuterPackagingConfidence = CursorUtil.getColumnIndexOrThrow(_cursor, "outerPackagingConfidence");
+          final int _cursorIndexOfOuterPackagingSource = CursorUtil.getColumnIndexOrThrow(_cursor, "outerPackagingSource");
+          final List<PriceOptionEntity> _result = new ArrayList<PriceOptionEntity>(_cursor.getCount());
+          while (_cursor.moveToNext()) {
+            final PriceOptionEntity _item_1;
+            final String _tmpUid;
+            _tmpUid = _cursor.getString(_cursorIndexOfUid);
+            final String _tmpItemId;
+            _tmpItemId = _cursor.getString(_cursorIndexOfItemId);
+            final String _tmpStore;
+            _tmpStore = _cursor.getString(_cursorIndexOfStore);
+            final PricePerUnit _tmpPricePerUnit;
+            final double _tmpPriceValue;
+            _tmpPriceValue = _cursor.getDouble(_cursorIndexOfPriceValue);
+            final String _tmpUnit;
+            _tmpUnit = _cursor.getString(_cursorIndexOfUnit);
+            final Double _tmpPackageSizeValue;
+            if (_cursor.isNull(_cursorIndexOfPackageSizeValue)) {
+              _tmpPackageSizeValue = null;
+            } else {
+              _tmpPackageSizeValue = _cursor.getDouble(_cursorIndexOfPackageSizeValue);
+            }
+            final String _tmpPackageSizeUnit;
+            if (_cursor.isNull(_cursorIndexOfPackageSizeUnit)) {
+              _tmpPackageSizeUnit = null;
+            } else {
+              _tmpPackageSizeUnit = _cursor.getString(_cursorIndexOfPackageSizeUnit);
+            }
+            final String _tmpOuterPackagingUnit;
+            if (_cursor.isNull(_cursorIndexOfOuterPackagingUnit)) {
+              _tmpOuterPackagingUnit = null;
+            } else {
+              _tmpOuterPackagingUnit = _cursor.getString(_cursorIndexOfOuterPackagingUnit);
+            }
+            final Double _tmpOuterPackagingConfidence;
+            if (_cursor.isNull(_cursorIndexOfOuterPackagingConfidence)) {
+              _tmpOuterPackagingConfidence = null;
+            } else {
+              _tmpOuterPackagingConfidence = _cursor.getDouble(_cursorIndexOfOuterPackagingConfidence);
+            }
+            final String _tmpOuterPackagingSource;
+            if (_cursor.isNull(_cursorIndexOfOuterPackagingSource)) {
+              _tmpOuterPackagingSource = null;
+            } else {
+              _tmpOuterPackagingSource = _cursor.getString(_cursorIndexOfOuterPackagingSource);
+            }
+            _tmpPricePerUnit = new PricePerUnit(_tmpPriceValue,_tmpUnit,_tmpPackageSizeValue,_tmpPackageSizeUnit,_tmpOuterPackagingUnit,_tmpOuterPackagingConfidence,_tmpOuterPackagingSource);
+            _item_1 = new PriceOptionEntity(_tmpUid,_tmpItemId,_tmpStore,_tmpPricePerUnit);
+            _result.add(_item_1);
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+          _statement.release();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
   public Object findByItemAndStore(final String itemId, final String store,
       final Continuation<? super PriceOptionEntity> $completion) {
     final String _sql = "SELECT * FROM price_options WHERE itemId = ? AND store = ? LIMIT 1";
@@ -430,6 +523,54 @@ public final class PriceOptionDao_Impl implements PriceOptionDao {
             _result = new PriceOptionEntity(_tmpUid,_tmpItemId,_tmpStore,_tmpPricePerUnit);
           } else {
             _result = null;
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+          _statement.release();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Object countDuplicateByNameAndStore(final String vaultUid, final String name,
+      final String store, final String excludingItemId,
+      final Continuation<? super Integer> $completion) {
+    final String _sql = "SELECT COUNT(*) FROM price_options p INNER JOIN items i ON p.itemId = i.id WHERE i.vaultUid = ? AND i.isDeleted = 0 AND LOWER(TRIM(i.name)) = LOWER(TRIM(?)) AND LOWER(TRIM(p.store)) = LOWER(TRIM(?)) AND (? IS NULL OR i.id != ?)";
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 5);
+    int _argIndex = 1;
+    _statement.bindString(_argIndex, vaultUid);
+    _argIndex = 2;
+    _statement.bindString(_argIndex, name);
+    _argIndex = 3;
+    _statement.bindString(_argIndex, store);
+    _argIndex = 4;
+    if (excludingItemId == null) {
+      _statement.bindNull(_argIndex);
+    } else {
+      _statement.bindString(_argIndex, excludingItemId);
+    }
+    _argIndex = 5;
+    if (excludingItemId == null) {
+      _statement.bindNull(_argIndex);
+    } else {
+      _statement.bindString(_argIndex, excludingItemId);
+    }
+    final CancellationSignal _cancellationSignal = DBUtil.createCancellationSignal();
+    return CoroutinesRoom.execute(__db, false, _cancellationSignal, new Callable<Integer>() {
+      @Override
+      @NonNull
+      public Integer call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final Integer _result;
+          if (_cursor.moveToFirst()) {
+            final int _tmp;
+            _tmp = _cursor.getInt(0);
+            _result = _tmp;
+          } else {
+            _result = 0;
           }
           return _result;
         } finally {

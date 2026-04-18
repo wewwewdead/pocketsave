@@ -11,6 +11,7 @@ import androidx.room.RoomDatabase;
 import androidx.room.RoomSQLiteQuery;
 import androidx.room.util.CursorUtil;
 import androidx.room.util.DBUtil;
+import androidx.room.util.StringUtil;
 import androidx.sqlite.db.SupportSQLiteStatement;
 import com.pocketsave.data.local.converter.Converters;
 import com.pocketsave.data.local.entity.CategoryEntity;
@@ -20,6 +21,7 @@ import java.lang.Long;
 import java.lang.Object;
 import java.lang.Override;
 import java.lang.String;
+import java.lang.StringBuilder;
 import java.lang.SuppressWarnings;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -436,6 +438,91 @@ public final class CategoryDao_Impl implements CategoryDao {
             _result = new CategoryEntity(_tmpUid,_tmpVaultUid,_tmpName,_tmpIconKey,_tmpSortOrder,_tmpColorHex,_tmpIsPlanSuppressed,_tmpPlanSuppressedAt,_tmpPlanSuppressedReason);
           } else {
             _result = null;
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+          _statement.release();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Object findByUids(final List<String> uids,
+      final Continuation<? super List<CategoryEntity>> $completion) {
+    final StringBuilder _stringBuilder = StringUtil.newStringBuilder();
+    _stringBuilder.append("SELECT * FROM categories WHERE uid IN (");
+    final int _inputSize = uids.size();
+    StringUtil.appendPlaceholders(_stringBuilder, _inputSize);
+    _stringBuilder.append(")");
+    final String _sql = _stringBuilder.toString();
+    final int _argCount = 0 + _inputSize;
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, _argCount);
+    int _argIndex = 1;
+    for (String _item : uids) {
+      _statement.bindString(_argIndex, _item);
+      _argIndex++;
+    }
+    final CancellationSignal _cancellationSignal = DBUtil.createCancellationSignal();
+    return CoroutinesRoom.execute(__db, false, _cancellationSignal, new Callable<List<CategoryEntity>>() {
+      @Override
+      @NonNull
+      public List<CategoryEntity> call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final int _cursorIndexOfUid = CursorUtil.getColumnIndexOrThrow(_cursor, "uid");
+          final int _cursorIndexOfVaultUid = CursorUtil.getColumnIndexOrThrow(_cursor, "vaultUid");
+          final int _cursorIndexOfName = CursorUtil.getColumnIndexOrThrow(_cursor, "name");
+          final int _cursorIndexOfIconKey = CursorUtil.getColumnIndexOrThrow(_cursor, "iconKey");
+          final int _cursorIndexOfSortOrder = CursorUtil.getColumnIndexOrThrow(_cursor, "sortOrder");
+          final int _cursorIndexOfColorHex = CursorUtil.getColumnIndexOrThrow(_cursor, "colorHex");
+          final int _cursorIndexOfIsPlanSuppressed = CursorUtil.getColumnIndexOrThrow(_cursor, "isPlanSuppressed");
+          final int _cursorIndexOfPlanSuppressedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "planSuppressedAt");
+          final int _cursorIndexOfPlanSuppressedReason = CursorUtil.getColumnIndexOrThrow(_cursor, "planSuppressedReason");
+          final List<CategoryEntity> _result = new ArrayList<CategoryEntity>(_cursor.getCount());
+          while (_cursor.moveToNext()) {
+            final CategoryEntity _item_1;
+            final String _tmpUid;
+            _tmpUid = _cursor.getString(_cursorIndexOfUid);
+            final String _tmpVaultUid;
+            _tmpVaultUid = _cursor.getString(_cursorIndexOfVaultUid);
+            final String _tmpName;
+            _tmpName = _cursor.getString(_cursorIndexOfName);
+            final String _tmpIconKey;
+            if (_cursor.isNull(_cursorIndexOfIconKey)) {
+              _tmpIconKey = null;
+            } else {
+              _tmpIconKey = _cursor.getString(_cursorIndexOfIconKey);
+            }
+            final int _tmpSortOrder;
+            _tmpSortOrder = _cursor.getInt(_cursorIndexOfSortOrder);
+            final String _tmpColorHex;
+            if (_cursor.isNull(_cursorIndexOfColorHex)) {
+              _tmpColorHex = null;
+            } else {
+              _tmpColorHex = _cursor.getString(_cursorIndexOfColorHex);
+            }
+            final boolean _tmpIsPlanSuppressed;
+            final int _tmp;
+            _tmp = _cursor.getInt(_cursorIndexOfIsPlanSuppressed);
+            _tmpIsPlanSuppressed = _tmp != 0;
+            final Date _tmpPlanSuppressedAt;
+            final Long _tmp_1;
+            if (_cursor.isNull(_cursorIndexOfPlanSuppressedAt)) {
+              _tmp_1 = null;
+            } else {
+              _tmp_1 = _cursor.getLong(_cursorIndexOfPlanSuppressedAt);
+            }
+            _tmpPlanSuppressedAt = __converters.longToDate(_tmp_1);
+            final String _tmpPlanSuppressedReason;
+            if (_cursor.isNull(_cursorIndexOfPlanSuppressedReason)) {
+              _tmpPlanSuppressedReason = null;
+            } else {
+              _tmpPlanSuppressedReason = _cursor.getString(_cursorIndexOfPlanSuppressedReason);
+            }
+            _item_1 = new CategoryEntity(_tmpUid,_tmpVaultUid,_tmpName,_tmpIconKey,_tmpSortOrder,_tmpColorHex,_tmpIsPlanSuppressed,_tmpPlanSuppressedAt,_tmpPlanSuppressedReason);
+            _result.add(_item_1);
           }
           return _result;
         } finally {

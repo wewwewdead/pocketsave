@@ -26,6 +26,10 @@ interface ItemDao {
     @Query("SELECT * FROM items WHERE id = :id")
     suspend fun findById(id: String): ItemEntity?
 
+    /** Batched [findById] — returns in arbitrary order; callers associateBy { id }. */
+    @Query("SELECT * FROM items WHERE id IN (:ids)")
+    suspend fun findByIds(ids: List<String>): List<ItemEntity>
+
     @Query("SELECT * FROM items WHERE vaultUid = :vaultUid AND LOWER(name) = LOWER(:name) AND isDeleted = 0")
     suspend fun findByNameExact(vaultUid: String, name: String): List<ItemEntity>
 

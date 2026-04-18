@@ -36,8 +36,11 @@ import com.pocketsave.data.local.entity.VaultEntity
         DeletedCartItemSnapshotEntity::class,
     ],
     // v2: `categories.emoji` → `categories.iconKey` (AppIcon key).
+    // v3: added composite indexes matching the real DAO query shapes:
+    //     items(vaultUid,isDeleted), items(categoryUid,isDeleted),
+    //     carts(vaultUid,isDeleted), cart_items(cartId,addedAt).
     // Destructive migration is acceptable pre-launch via `fallbackToDestructiveMigration()`.
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
