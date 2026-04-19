@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -56,6 +57,7 @@ import com.pocketsave.core.trash.TrashScreen
 import com.pocketsave.core.tripshare.TripShareScreen
 import com.pocketsave.core.vault.VaultScreen
 import com.pocketsave.data.prefs.AppPreferences
+import com.pocketsave.data.prefs.LocalAppPreferences
 import com.pocketsave.data.prefs.CartBackgroundStore
 
 object Routes {
@@ -215,6 +217,7 @@ fun PocketSaveNavHost(
     val currentRoute = backStackEntry?.destination?.route
     val showBottomNav = currentRoute in BOTTOM_NAV_ROUTES
 
+    CompositionLocalProvider(LocalAppPreferences provides preferences) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
@@ -403,6 +406,7 @@ fun PocketSaveNavHost(
                 )
             }
         }
+    }
     }
 }
 

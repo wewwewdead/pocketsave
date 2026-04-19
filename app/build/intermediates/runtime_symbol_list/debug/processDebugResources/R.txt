@@ -782,6 +782,11 @@ int drawable notify_panel_notification_icon_bg 0x7f070095
 int drawable test_level_drawable 0x7f070096
 int drawable tooltip_frame_dark 0x7f070097
 int drawable tooltip_frame_light 0x7f070098
+int font poppins_bold 0x7f120000
+int font poppins_light 0x7f120001
+int font poppins_medium 0x7f120002
+int font poppins_regular 0x7f120003
+int font poppins_semibold 0x7f120004
 int id ALT 0x7f080000
 int id CTRL 0x7f080001
 int id FUNCTION 0x7f080002

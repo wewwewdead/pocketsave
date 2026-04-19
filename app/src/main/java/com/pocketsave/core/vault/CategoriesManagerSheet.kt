@@ -217,21 +217,18 @@ private fun CategoryRow(
     onEdit: (() -> Unit)?,
     onDelete: (() -> Unit)?,
 ) {
-    val tint = category.colorHex
-        ?.let { ColorOption.byHex(it)?.color ?: ColorOption.parseHex(it) }
-        ?: MaterialTheme.colorScheme.onSurface
-
     Column {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                imageVector = AppIcon.resolveIcon(iconKey),
-                contentDescription = null,
-                tint = tint,
+            com.pocketsave.core.vault.icons.CategoryEmojiTile(
+                iconKey = iconKey,
+                colorHex = category.colorHex,
+                size = 44.dp,
+                cornerRadius = 12.dp,
             )
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(14.dp))
             Text(
                 text = category.name,
                 modifier = Modifier.weight(1f),

@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AddShoppingCart
 import androidx.compose.material.icons.outlined.DeleteOutline
@@ -29,10 +28,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.pocketsave.common.ui.AppShapes
 import com.pocketsave.common.ui.PocketSaveTokens
+import com.pocketsave.common.ui.decor.grainOverlay
 import com.pocketsave.core.home.pressScale
 
 data class QuickAction(
@@ -41,14 +43,16 @@ data class QuickAction(
     val icon: ImageVector,
     val tint: Color,
     val iconTint: Color,
+    val shape: Shape,
     val onClick: () -> Unit,
     val isPrimary: Boolean = false,
 )
 
 /**
- * Two-row grid of four soft tiles. Uses Row-of-Rows instead of LazyVerticalGrid
- * because the count is fixed and we want predictable measurement inside the
- * parent LazyColumn.
+ * Four-up grid of soft action tiles. The New-trip tile is the sage CTA; the
+ * other three carry the supporting-hue cast (peach for vault, butter for
+ * history, lavender for trash) so each shortcut has its own identity note
+ * without the row turning into a rainbow.
  */
 @Composable
 fun QuickActionsGrid(
@@ -59,40 +63,42 @@ fun QuickActionsGrid(
     modifier: Modifier = Modifier,
 ) {
     val pastels = PocketSaveTokens.pastels
-    // New trip is the primary CTA (sage filled); the other three sit in
-    // softer sage tonals so the row reads as one family.
     val actions = listOf(
         QuickAction(
             label = "New trip",
-            caption = "Start shopping",
+            caption = "Set a budget, go shop",
             icon = Icons.Outlined.AddShoppingCart,
             tint = MaterialTheme.colorScheme.primary,
             iconTint = MaterialTheme.colorScheme.onPrimary,
+            shape = AppShapes.Pebble,
             onClick = onNewTrip,
             isPrimary = true,
         ),
         QuickAction(
-            label = "Vault",
-            caption = "Your pantry",
+            label = "Your vault",
+            caption = "Saved items",
             icon = Icons.Outlined.Inventory2,
             tint = pastels.peachSoft,
             iconTint = pastels.peachDeep,
+            shape = AppShapes.PebbleAlt,
             onClick = onOpenVault,
         ),
         QuickAction(
-            label = "History",
-            caption = "Past trips",
+            label = "Past trips",
+            caption = "Look back",
             icon = Icons.Outlined.HistoryToggleOff,
-            tint = pastels.mintSoft,
-            iconTint = pastels.mintDeep,
+            tint = pastels.butterSoft,
+            iconTint = pastels.butterDeep,
+            shape = AppShapes.PebbleAlt,
             onClick = onOpenHistory,
         ),
         QuickAction(
-            label = "Trash",
+            label = "Little bin",
             caption = "Restore carts",
             icon = Icons.Outlined.DeleteOutline,
             tint = pastels.lavenderSoft,
             iconTint = pastels.lavenderDeep,
+            shape = AppShapes.Pebble,
             onClick = onOpenTrash,
         ),
     )
@@ -116,20 +122,22 @@ private fun ActionTile(
     action: QuickAction,
     modifier: Modifier = Modifier,
 ) {
+    val pastels = PocketSaveTokens.pastels
     val interaction = remember { MutableInteractionSource() }
-    // Primary tile pairs a white bubble against the sage fill; soft tiles
-    // use a translucent-white bubble against a sage tint so every tile
-    // shares the same tonal contrast relationship.
     val bubbleBg = if (action.isPrimary) {
-        Color.White.copy(alpha = 0.18f)
+        Color.White.copy(alpha = 0.2f)
     } else {
-        Color.White.copy(alpha = 0.6f)
+        Color.White.copy(alpha = 0.65f)
     }
     Surface(
         color = Color.Transparent,
         modifier = modifier
-            .clip(RoundedCornerShape(22.dp))
+            .clip(action.shape)
             .background(action.tint)
+            .grainOverlay(
+                tint = if (action.isPrimary) Color.White.copy(alpha = 0.06f) else pastels.grain,
+                density = 0.6f,
+            )
             .pressScale(interaction)
             .clickable(
                 interactionSource = interaction,
@@ -143,7 +151,7 @@ private fun ActionTile(
         ) {
             Box(
                 modifier = Modifier
-                    .size(38.dp)
+                    .size(42.dp)
                     .clip(CircleShape)
                     .background(bubbleBg),
                 contentAlignment = Alignment.Center,

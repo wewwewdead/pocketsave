@@ -24,7 +24,9 @@ import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.RestartAlt
+import androidx.compose.material.icons.outlined.Savings
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -53,6 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.pocketsave.billing.SubscriptionManager
 import com.pocketsave.common.ui.PocketSaveTokens
 import com.pocketsave.core.currency.CurrencyPickerSheet
@@ -99,6 +102,7 @@ fun MoreScreen(
 
     val selectedCurrencyCode by preferences.selectedCurrencyCode.collectAsState(initial = null)
     val selectedCurrencySymbol by preferences.selectedCurrencySymbol.collectAsState(initial = null)
+    val monthlyBudget by preferences.monthlyBudget.collectAsState(initial = 0.0)
     val currencyLabel = buildString {
         val code = selectedCurrencyCode ?: formatter.preference.code
         val symbol = selectedCurrencySymbol?.takeIf { it.isNotBlank() } ?: formatter.preference.symbol
@@ -110,6 +114,7 @@ fun MoreScreen(
 
     var showCurrencyPicker by remember { mutableStateOf(false) }
     var showNameSheet by remember { mutableStateOf(false) }
+    var showBudgetSheet by remember { mutableStateOf(false) }
     var showResetConfirmation by remember { mutableStateOf(false) }
     var isResetting by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -124,14 +129,32 @@ fun MoreScreen(
                 .fillMaxSize()
                 .padding(horizontal = 20.dp, vertical = 16.dp),
         ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "a few little things",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 0.9.sp,
+                    ),
+                    color = pastels.butterDeep,
+                )
+                Spacer(Modifier.width(6.dp))
+                com.pocketsave.common.ui.decor.UnderlineSwoosh(
+                    color = pastels.butterDeep.copy(alpha = 0.55f),
+                )
+            }
+            Spacer(Modifier.height(4.dp))
             Text(
-                text = "More",
-                style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurface,
+                text = "Little things",
+                style = MaterialTheme.typography.displaySmall.copy(
+                    fontWeight = FontWeight.Medium,
+                ),
+                color = pastels.inkBerry,
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "Profile, preferences, and app data.",
+                text = "Your name, your currency, your quiet preferences.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -206,6 +229,16 @@ fun MoreScreen(
             )
             Spacer(Modifier.height(10.dp))
             MoreRow(
+                title = "Monthly budget",
+                subtitle = if (monthlyBudget > 0.0)
+                    formatter.format(monthlyBudget)
+                else
+                    "Set a ceiling to get warnings on new trips",
+                icon = Icons.Outlined.Savings,
+                onClick = { showBudgetSheet = true },
+            )
+            Spacer(Modifier.height(10.dp))
+            MoreRow(
                 title = "Trash",
                 subtitle = "Restore completed trips you deleted",
                 icon = Icons.Outlined.DeleteOutline,
@@ -245,6 +278,21 @@ fun MoreScreen(
                 scope.launch {
                     vaultService.updateUserName(newName)
                     showNameSheet = false
+                    haptics.perform(AppHaptic.Confirm)
+                }
+            },
+        )
+    }
+
+    if (showBudgetSheet) {
+        EditMonthlyBudgetSheet(
+            initial = monthlyBudget,
+            currencySymbol = formatter.preference.symbol,
+            onDismiss = { showBudgetSheet = false },
+            onSubmit = { newBudget ->
+                scope.launch {
+                    preferences.setMonthlyBudget(newBudget)
+                    showBudgetSheet = false
                     haptics.perform(AppHaptic.Confirm)
                 }
             },
@@ -495,6 +543,81 @@ private fun EditNameSheet(
             Spacer(Modifier.height(8.dp))
         }
     }
+}
+
+/**
+ * Bottom sheet for editing the monthly spending ceiling. Persists via
+ * [com.pocketsave.data.prefs.AppPreferences.setMonthlyBudget]; entering 0 (or
+ * tapping Clear) removes the key so trip-creation skips the warning entirely.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditMonthlyBudgetSheet(
+    initial: Double,
+    currencySymbol: String,
+    onDismiss: () -> Unit,
+    onSubmit: (Double) -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var raw by remember {
+        mutableStateOf(if (initial > 0.0) trimTrailingZeros(initial) else "")
+    }
+    val parsed = raw.toDoubleOrNull()
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Text(
+                text = "Monthly budget",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+            )
+            Text(
+                text = "We'll warn you (with a haptic) when creating a new trip would push this month past the ceiling.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            OutlinedTextField(
+                value = raw,
+                onValueChange = { input ->
+                    if (input.isEmpty() || input.matches(Regex("^\\d*[.,]?\\d{0,2}$"))) {
+                        raw = input.replace(',', '.')
+                    }
+                },
+                label = { Text("Amount (${currencySymbol.ifBlank { "currency" }})") },
+                placeholder = { Text("0.00") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Decimal,
+                    imeAction = ImeAction.Done,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                TextButton(onClick = onDismiss, modifier = Modifier.weight(1f)) { Text("Cancel") }
+                if (initial > 0.0) {
+                    TextButton(
+                        onClick = { onSubmit(0.0) },
+                        modifier = Modifier.weight(1f),
+                    ) { Text("Clear") }
+                }
+                Button(
+                    onClick = { onSubmit(parsed ?: 0.0) },
+                    enabled = (parsed != null && parsed > 0.0 && parsed != initial) || (raw.isEmpty() && initial > 0.0),
+                    modifier = Modifier.weight(1f),
+                ) { Text("Save") }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+private fun trimTrailingZeros(value: Double): String {
+    val s = "%.2f".format(value)
+    return s.trimEnd('0').trimEnd('.')
 }
 
 /**

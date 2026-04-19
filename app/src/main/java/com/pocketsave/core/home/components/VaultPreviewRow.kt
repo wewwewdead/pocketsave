@@ -6,7 +6,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,9 +16,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowOutward
+import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -30,11 +28,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.pocketsave.common.ui.AppShapes
+import com.pocketsave.common.ui.PastelPalette
 import com.pocketsave.common.ui.PocketSaveTokens
+import com.pocketsave.common.ui.components.AffectionateEmpty
+import com.pocketsave.common.ui.components.PSSectionHeader
+import com.pocketsave.common.ui.decor.grainOverlay
 import com.pocketsave.common.util.ColorOption
 import com.pocketsave.core.home.pressScale
 
@@ -45,12 +49,19 @@ data class VaultCategoryTile(
     val icon: ImageVector,
     val tint: Color,
     val iconTint: Color,
+    /** Stable icon-key (maps to [com.pocketsave.core.vault.icons.CategoryEmoji]).
+     *  When present the home chip renders the emoji sticker — matching the
+     *  Vault screen — instead of the Material icon. */
+    val iconKey: String? = null,
+    /** Raw hex for the category's stored colour, passed through so the
+     *  emoji tile can carry the same soft tint used in the vault. */
+    val colorHex: String? = null,
 )
 
 /**
- * Horizontal row of compact category chips. Taps on any chip (or the section
- * header) jump to the full vault — same destination, different affordances —
- * because the vault screen is where categories live in this app.
+ * Horizontal row of category chips. The whole section (header, chips,
+ * empty state) funnels taps to [onOpenVault] since that's where categories
+ * actually live.
  */
 @Composable
 fun VaultPreviewRow(
@@ -58,25 +69,34 @@ fun VaultPreviewRow(
     onOpenVault: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val pastels = PocketSaveTokens.pastels
     Column(modifier = modifier.fillMaxWidth()) {
-        SectionHeader(
-            title = "Your pantry",
+        PSSectionHeader(
+            title = "Your vault",
+            kicker = "the collection",
+            accent = pastels.lavenderDeep,
             subtitle = if (categories.isEmpty())
-                "Your categories live here"
+                "Where your usuals come to live."
             else
-                "${categories.size} categories in your vault",
+                "${categories.size} categor${if (categories.size == 1) "y" else "ies"} saved",
             onSeeAll = onOpenVault,
         )
         Spacer(Modifier.height(12.dp))
         if (categories.isEmpty()) {
-            EmptyHint(message = "Add your first item in the vault.")
+            AffectionateEmpty(
+                title = "A little empty in here.",
+                body = "Add the things you buy often — we'll remember prices and carry them into each trip.",
+                icon = Icons.Outlined.Inventory2,
+                accent = pastels.lavenderDeep,
+            )
         } else {
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(horizontal = 0.dp),
             ) {
                 items(categories, key = { it.id }) { tile ->
-                    CategoryChip(tile = tile, onClick = onOpenVault)
+                    val index = categories.indexOf(tile)
+                    val shape = if (index % 2 == 0) AppShapes.Pebble else AppShapes.PebbleAlt
+                    CategoryChip(tile = tile, shape = shape, onClick = onOpenVault)
                 }
             }
         }
@@ -84,14 +104,16 @@ fun VaultPreviewRow(
 }
 
 @Composable
-private fun CategoryChip(tile: VaultCategoryTile, onClick: () -> Unit) {
+private fun CategoryChip(tile: VaultCategoryTile, shape: Shape, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
+    val pastels = PocketSaveTokens.pastels
     Surface(
         color = Color.Transparent,
         modifier = Modifier
-            .width(128.dp)
-            .clip(RoundedCornerShape(22.dp))
+            .width(132.dp)
+            .clip(shape)
             .background(tile.tint)
+            .grainOverlay(tint = pastels.grain, density = 0.6f)
             .pressScale(interaction)
             .clickable(
                 interactionSource = interaction,
@@ -100,24 +122,17 @@ private fun CategoryChip(tile: VaultCategoryTile, onClick: () -> Unit) {
             ),
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.62f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = tile.icon,
-                    contentDescription = null,
-                    tint = tile.iconTint,
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-            Spacer(Modifier.height(14.dp))
+            com.pocketsave.core.vault.icons.CategoryEmojiTile(
+                iconKey = tile.iconKey,
+                colorHex = tile.colorHex,
+                size = 40.dp,
+                cornerRadius = 12.dp,
+                fallbackTint = Color.White.copy(alpha = 0.7f),
+            )
+            Spacer(Modifier.height(16.dp))
             Text(
                 text = tile.name,
-                style = MaterialTheme.typography.titleSmall.copy(
+                style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.SemiBold,
                 ),
                 color = tile.iconTint,
@@ -126,7 +141,7 @@ private fun CategoryChip(tile: VaultCategoryTile, onClick: () -> Unit) {
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                text = "${tile.itemCount} item${if (tile.itemCount == 1) "" else "s"}",
+                text = "${tile.itemCount} saved",
                 style = MaterialTheme.typography.labelSmall,
                 color = tile.iconTint.copy(alpha = 0.72f),
             )
@@ -135,8 +150,8 @@ private fun CategoryChip(tile: VaultCategoryTile, onClick: () -> Unit) {
 }
 
 /**
- * Shared section header (title + subtitle + "See all" chip). Used by every
- * horizontal-list section so the rhythm stays consistent.
+ * Legacy section header (kept for callers that still import this symbol).
+ * New code should use `PSSectionHeader` from `common.ui.components`.
  */
 @Composable
 fun SectionHeader(
@@ -145,66 +160,23 @@ fun SectionHeader(
     onSeeAll: (() -> Unit)? = null,
     actionLabel: String = "See all",
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.SemiBold,
-                ),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            if (!subtitle.isNullOrBlank()) {
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        if (onSeeAll != null) {
-            val interaction = remember { MutableInteractionSource() }
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                shape = RoundedCornerShape(999.dp),
-                modifier = Modifier
-                    .pressScale(interaction, pressedScale = 0.94f)
-                    .clickable(
-                        interactionSource = interaction,
-                        indication = null,
-                        onClick = onSeeAll,
-                    ),
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = actionLabel,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Icon(
-                        imageVector = Icons.Outlined.ArrowOutward,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(14.dp),
-                    )
-                }
-            }
-        }
-    }
+    PSSectionHeader(
+        title = title,
+        subtitle = subtitle,
+        onSeeAll = onSeeAll,
+        actionLabel = actionLabel,
+    )
 }
 
+/**
+ * Small text-only empty placeholder. Preserved for legacy callers; prefer
+ * [AffectionateEmpty] for new surfaces.
+ */
 @Composable
 internal fun EmptyHint(message: String) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant,
-        shape = RoundedCornerShape(16.dp),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Text(
@@ -217,33 +189,38 @@ internal fun EmptyHint(message: String) {
 }
 
 /**
- * Cycles tints across category chips. Under the sage-only system every step
- * is a different intensity of the same family, so chips feel distinct
- * without breaking the one-accent rule. A persisted category `colorHex`
+ * Editorial tint cycle for category chips. Walks the supporting-hue cast —
+ * mint, peach, butter, lavender, sky — so the vault row reads as a small
+ * cast of characters instead of one tonal ramp. A persisted [storedHex]
  * still wins for users who deliberately picked a swatch.
  */
 object VaultPaletteCycle {
-    fun tintFor(index: Int, storedHex: String?): Pair<Color, Color> {
+    /**
+     * Resolves a tint pair from the supporting-hue cast. Non-composable by
+     * design so callers can use it inside `remember { ... mapIndexed { ... }}`.
+     * The caller resolves [palette] once at composition scope and passes it
+     * in for every item.
+     */
+    fun tintFor(
+        palette: PastelPalette,
+        index: Int,
+        storedHex: String?,
+    ): Pair<Color, Color> {
         storedHex?.let { hex ->
             ColorOption.byHex(hex)?.let { return it.color to contrastInk(it.color) }
         }
-        return SAGE_CYCLE[index.mod(SAGE_CYCLE.size)]
+        val cycle = listOf(
+            palette.mintSoft to palette.mintDeep,
+            palette.peachSoft to palette.peachDeep,
+            palette.butterSoft to palette.butterDeep,
+            palette.lavenderSoft to palette.lavenderDeep,
+            palette.skySoft to palette.skyDeep,
+        )
+        return cycle[index.mod(cycle.size)]
     }
 
     private fun contrastInk(bg: Color): Color {
         val luminance = (bg.red * 299 + bg.green * 587 + bg.blue * 114) / 1000f
         return if (luminance > 0.78f) Color(0xFF2D4E3D) else Color(0xFF1C2A20)
     }
-
-    // Sage tonal ramp — lightest → deepest. Each step keeps the same hue and
-    // only shifts intensity, which is what gives the vault row its calm,
-    // single-family feel.
-    private val SAGE_CYCLE: List<Pair<Color, Color>> = listOf(
-        Color(0xFFEFF5F1) to Color(0xFF3F6351), // sage 50
-        Color(0xFFE8F0EA) to Color(0xFF3F6351), // sage 75
-        Color(0xFFE2EDE6) to Color(0xFF2D4E3D), // sage 100
-        Color(0xFFD6E6DB) to Color(0xFF2D4E3D), // sage 200
-        Color(0xFFC9DECF) to Color(0xFF22402F), // sage 300
-        Color(0xFFE8F0EA) to Color(0xFF4C735F), // sage 75 (alt ink)
-    )
 }

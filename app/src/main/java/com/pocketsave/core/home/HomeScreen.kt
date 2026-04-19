@@ -93,6 +93,15 @@ fun HomeScreen(
             val progress = if (cart.budget > 0.0 && spent > 0.0) {
                 (spent / cart.budget).toFloat().coerceIn(0f, 1f)
             } else 0f
+            val hasBudget = cart.budget > 0.0
+            val over = hasBudget && spent > cart.budget
+            // Remaining/over delta surfaced on the card header. Null when no
+            // budget is set — the nested card then hides its savings pill.
+            val remainingLabel = when {
+                !hasBudget -> null
+                over -> formatter.format(spent - cart.budget)
+                else -> formatter.format((cart.budget - spent).coerceAtLeast(0.0))
+            }
             OngoingTripItem(
                 cartId = cart.id,
                 name = cart.name.ifBlank { "Untitled trip" },
@@ -102,33 +111,33 @@ fun HomeScreen(
                 spentLabel = formatter.format(spent),
                 budgetLabel = cart.budget.takeIf { it > 0.0 }?.let { formatter.format(it) },
                 progress = progress,
+                remainingLabel = remainingLabel,
+                overBudget = over,
             )
         }
     }
 
-    // Budget-left pill: sum remaining across active carts that actually have a
-    // budget set. If none do, fall back to showing total items saved (the next
-    // most useful single number from the real data surface).
-    val budgetLeftLabel = remember(active, state.cartItemsByCart) {
-        val budgeted = active.filter { it.budget > 0.0 }
-        if (budgeted.isEmpty()) {
-            "—"
-        } else {
-            val remaining = budgeted.sumOf { cart ->
-                val items = state.cartItemsByCart[cart.id].orEmpty()
-                val spent = vaultService.computeTotalSpent(CartStatus.fromRaw(cart.status), items)
-                (cart.budget - spent).coerceAtLeast(0.0)
-            }
-            formatter.format(remaining)
-        }
+    // Monthly-budget pill: total spent so far this calendar month, summed
+    // across every non-deleted cart (planning, shopping, completed).
+    // `computeTotalSpent` does the right thing per status — planned-line totals
+    // for planning carts, fulfilled-actuals for shopping/completed — so the
+    // pill climbs as the user shops without us re-implementing the math.
+    val monthlyBudget by preferences.monthlyBudget.collectAsState(initial = 0.0)
+    val monthlySpent = remember(state.carts, state.cartItemsByCart) {
+        com.pocketsave.core.budget.monthlySpendIn(
+            carts = state.carts,
+            itemsByCart = state.cartItemsByCart,
+            computeSpent = vaultService::computeTotalSpent,
+        )
     }
 
-    val categoryTiles: List<VaultCategoryTile> = remember(state.categories, state.items) {
+    val pastels = com.pocketsave.common.ui.PocketSaveTokens.pastels
+    val categoryTiles: List<VaultCategoryTile> = remember(state.categories, state.items, pastels) {
         val countsByCategory = state.items.groupingBy { it.categoryUid }.eachCount()
         state.categories
             .sortedBy { it.sortOrder }
             .mapIndexed { index, cat ->
-                val (tint, iconTint) = VaultPaletteCycle.tintFor(index, cat.colorHex)
+                val (tint, iconTint) = VaultPaletteCycle.tintFor(pastels, index, cat.colorHex)
                 VaultCategoryTile(
                     id = cat.uid,
                     name = cat.name,
@@ -136,11 +145,13 @@ fun HomeScreen(
                     icon = AppIcon.resolveIcon(cat.iconKey),
                     tint = tint,
                     iconTint = iconTint,
+                    iconKey = cat.iconKey,
+                    colorHex = cat.colorHex,
                 )
             }
     }
 
-    val rememberedItems: List<RememberedItem> = remember(state.items, state.categories) {
+    val rememberedItems: List<RememberedItem> = remember(state.items, state.categories, pastels) {
         val categoryById = state.categories.associateBy { it.uid }
         state.items
             .asSequence()
@@ -151,7 +162,7 @@ fun HomeScreen(
             .toList()
             .mapIndexed { index, item ->
                 val category = item.categoryUid?.let { categoryById[it] }
-                val (tint, ink) = VaultPaletteCycle.tintFor(index, category?.colorHex)
+                val (tint, ink) = VaultPaletteCycle.tintFor(pastels, index, category?.colorHex)
                 RememberedItem(
                     id = item.id,
                     name = item.name,
@@ -160,6 +171,8 @@ fun HomeScreen(
                     categoryIcon = AppIcon.resolveIcon(category?.iconKey),
                     categoryTint = tint,
                     iconTint = ink,
+                    iconKey = category?.iconKey,
+                    categoryColorHex = category?.colorHex,
                 )
             }
     }
@@ -168,22 +181,31 @@ fun HomeScreen(
         completed.take(4).map { cart ->
             val items = state.cartItemsByCart[cart.id].orEmpty()
             val spent = vaultService.computeTotalSpent(CartStatus.COMPLETED, items)
+            val hasBudget = cart.budget > 0.0
+            // Delta carries just the raw amount; the NestedBudgetCard
+            // prepends "+" or "−" based on whether it's a saved or over
+            // variant, so the label here stays clean for other consumers.
             val delta = when {
-                cart.budget <= 0.0 -> BudgetDelta.NoBudget
+                !hasBudget -> BudgetDelta.NoBudget
                 spent <= cart.budget -> BudgetDelta.Under(
-                    label = "${formatter.format((cart.budget - spent).coerceAtLeast(0.0))} under",
+                    label = formatter.format((cart.budget - spent).coerceAtLeast(0.0)),
                 )
                 else -> BudgetDelta.Over(
-                    label = "${formatter.format(spent - cart.budget)} over",
+                    label = formatter.format(spent - cart.budget),
                 )
             }
+            val progress = if (hasBudget && spent > 0.0) {
+                (spent / cart.budget).toFloat().coerceIn(0f, 1f)
+            } else if (hasBudget) 0f else 1f
             RecentTripRow(
                 cartId = cart.id,
                 name = cart.name.ifBlank { "Untitled trip" },
                 dateLabel = relativeDateLabel(cart.completedAt ?: cart.updatedAt),
                 itemCount = items.size,
                 spentLabel = formatter.format(spent),
+                budgetLabel = cart.budget.takeIf { it > 0.0 }?.let { formatter.format(it) },
                 budgetDelta = delta,
+                progress = progress,
             )
         }
     }
@@ -217,7 +239,7 @@ fun HomeScreen(
                 contentPadding = PaddingValues(
                     start = 20.dp,
                     end = 20.dp,
-                    top = 16.dp,
+                    top = 12.dp,
                     bottom = 32.dp,
                 ),
                 verticalArrangement = Arrangement.spacedBy(22.dp),
@@ -226,10 +248,12 @@ fun HomeScreen(
                     Entrance(index = 0) {
                         SummaryPillsRow(
                             activeTrips = active.size,
-                            budgetRemainingLabel = budgetLeftLabel,
+                            monthlyBudget = monthlyBudget,
+                            monthlySpent = monthlySpent,
                             savedItems = state.items.size,
                             onOpenVault = onOpenVault,
                             onOpenActiveTrips = onOpenActiveTrips,
+                            onOpenMonthlyBudget = onOpenHistory,
                         )
                     }
                 }

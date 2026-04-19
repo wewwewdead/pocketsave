@@ -4,7 +4,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -17,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.HistoryToggleOff
@@ -29,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -40,14 +41,19 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pocketsave.common.ui.Motion
+import com.pocketsave.common.ui.PastelPalette
 import com.pocketsave.common.ui.PocketSaveSprings
 import com.pocketsave.common.ui.PocketSaveTokens
 
 /**
- * Five-tab bottom nav for the top-level destinations. Active tab shows a
- * soft sage pill behind the icon and a slightly deeper label; inactive tabs
- * read quietly in onSurfaceVariant ink. Tap feedback is a short spring on
- * the icon so the bar feels responsive without going loud.
+ * Five-tab dock. Each tab carries its own identity hue, surfaced when
+ * selected — Home sits in the sage CTA family, Vault in lavender-dusk,
+ * Trips in mint, History in peach, More in butter. The pill behind the
+ * icon animates in with a gentle scale + colour tween, and the icon itself
+ * hops a touch on selection for a small "I got you" beat.
+ *
+ * The bar floats with rounded top corners and a soft shadow so it reads
+ * like a companion dock rather than a system strip.
  */
 enum class NavTab(
     val route: String,
@@ -61,43 +67,42 @@ enum class NavTab(
     MORE("more", "More", Icons.Outlined.MoreHoriz),
 }
 
+private data class TabTint(val soft: Color, val deep: Color)
+
+/** Every tab resolves to the same sage pill — the bar is monotone. The
+ *  animation (pill scale + icon hop + dot indicator) carries the identity
+ *  between tabs instead of colour. */
+@Composable
+private fun NavTab.tint(pastels: PastelPalette, primary: Color): TabTint =
+    TabTint(soft = pastels.mintSoft, deep = primary)
+
 @Composable
 fun BottomNavBar(
     currentRoute: String?,
     onTabSelected: (NavTab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val pastels = PocketSaveTokens.pastels
     Surface(
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
-        shadowElevation = 8.dp,
+        shadowElevation = 14.dp,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         modifier = modifier.fillMaxWidth(),
     ) {
-        Column {
-            // Soft hairline above the bar — a whisper of separation from
-            // page content without a hard edge.
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(pastels.hairline),
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                NavTab.values().forEach { tab ->
-                    BottomNavItem(
-                        tab = tab,
-                        selected = tab.route == currentRoute,
-                        onClick = { onTabSelected(tab) },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            NavTab.values().forEach { tab ->
+                BottomNavItem(
+                    tab = tab,
+                    selected = tab.route == currentRoute,
+                    onClick = { onTabSelected(tab) },
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
     }
@@ -111,13 +116,11 @@ private fun BottomNavItem(
     modifier: Modifier = Modifier,
 ) {
     val interaction = remember { MutableInteractionSource() }
+    val pastels = PocketSaveTokens.pastels
     val primary = MaterialTheme.colorScheme.primary
-    val container = MaterialTheme.colorScheme.primaryContainer
     val quietInk = MaterialTheme.colorScheme.onSurfaceVariant
+    val tabTint = tab.tint(pastels, primary)
 
-    // Icon "hop" when this tab becomes selected: briefly overshoots to 1.22,
-    // then settles back to 1 with a gentler spring. Inactive tabs sit at
-    // 0.96 for a subtle quiet-state contrast.
     val iconHop = remember { Animatable(if (selected) 1f else 0.96f) }
     LaunchedEffect(selected) {
         if (selected) {
@@ -128,31 +131,34 @@ private fun BottomNavItem(
         }
     }
     val iconTint by animateColorAsState(
-        targetValue = if (selected) primary else quietInk,
+        targetValue = if (selected) tabTint.deep else quietInk,
         animationSpec = tween(Motion.MediumMs),
         label = "nav-icon-tint",
     )
     val labelTint by animateColorAsState(
-        targetValue = if (selected) primary else quietInk,
+        targetValue = if (selected) tabTint.deep else quietInk,
         animationSpec = tween(Motion.MediumMs),
         label = "nav-label-tint",
     )
     val pillColor by animateColorAsState(
-        targetValue = if (selected) container else Color.Transparent,
+        targetValue = if (selected) tabTint.soft else Color.Transparent,
         animationSpec = tween(Motion.MediumMs),
         label = "nav-pill-tint",
     )
-    // Pill grows slightly as it appears behind the icon — same rhythm as
-    // the hop so they read as one motion, not two.
     val pillScale by animateFloatAsState(
-        targetValue = if (selected) 1f else 0.82f,
+        targetValue = if (selected) 1f else 0.8f,
         animationSpec = PocketSaveSprings.Gentle,
         label = "nav-pill-scale",
+    )
+    val indicatorAlpha by animateFloatAsState(
+        targetValue = if (selected) 1f else 0f,
+        animationSpec = tween(Motion.MediumMs),
+        label = "nav-dot",
     )
 
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(18.dp))
             .clickable(
                 interactionSource = interaction,
                 indication = null,
@@ -166,7 +172,7 @@ private fun BottomNavItem(
                 .scale(pillScale)
                 .clip(RoundedCornerShape(999.dp))
                 .background(pillColor)
-                .padding(horizontal = 14.dp, vertical = 6.dp),
+                .padding(horizontal = 16.dp, vertical = 7.dp),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -178,13 +184,23 @@ private fun BottomNavItem(
                     .scale(iconHop.value),
             )
         }
-        Spacer(Modifier.height(3.dp))
+        Spacer(Modifier.height(2.dp))
         Text(
             text = tab.label,
             style = MaterialTheme.typography.labelSmall.copy(
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
             ),
             color = labelTint,
+        )
+        // Soft identity dot beneath the label — a small "this is me" mark
+        // that only renders for the selected tab. Inherits the tab's deep
+        // tint so the nav feels alive without adding visual noise.
+        Box(
+            modifier = Modifier
+                .size(3.dp)
+                .scale(indicatorAlpha)
+                .clip(CircleShape)
+                .background(tabTint.deep),
         )
     }
 }

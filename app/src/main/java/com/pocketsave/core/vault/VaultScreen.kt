@@ -76,6 +76,11 @@ import com.pocketsave.billing.FeatureLimits
 import com.pocketsave.billing.PremiumFeature
 import com.pocketsave.billing.SubscriptionManager
 import com.pocketsave.billing.rememberPaywallGate
+import com.pocketsave.common.ui.AppShapes
+import com.pocketsave.common.ui.PocketSaveTokens
+import com.pocketsave.common.ui.components.AffectionateEmpty
+import com.pocketsave.common.ui.components.StickerChip
+import com.pocketsave.common.ui.decor.grainOverlay
 import com.pocketsave.common.util.ColorOption
 import com.pocketsave.core.cart.VaultSelectionStore
 import com.pocketsave.core.paywall.CapHintBanner
@@ -349,7 +354,14 @@ fun VaultScreen(
 @Composable
 private fun VaultTopBar(onBack: () -> Unit, onManageCategories: () -> Unit) {
     TopAppBar(
-        title = { Text("Vault") },
+        title = {
+            Text(
+                text = "Vault",
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Normal,
+                ),
+            )
+        },
         navigationIcon = {
             IconButton(onClick = onBack) {
                 Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -365,23 +377,58 @@ private fun VaultTopBar(onBack: () -> Unit, onManageCategories: () -> Unit) {
 
 @Composable
 private fun SearchField(value: String, onChange: (String) -> Unit) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onChange,
-        placeholder = { Text("Search items") },
-        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-        trailingIcon = {
-            if (value.isNotEmpty()) {
-                IconButton(onClick = { onChange("") }) {
-                    Icon(Icons.Default.Close, contentDescription = "Clear search")
-                }
-            }
-        },
-        singleLine = true,
+    val pastels = PocketSaveTokens.pastels
+    Surface(
+        color = pastels.canvasTint,
+        shape = RoundedCornerShape(999.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-    )
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(Modifier.width(10.dp))
+            Box(modifier = Modifier.weight(1f)) {
+                if (value.isEmpty()) {
+                    Text(
+                        text = "Search your vault",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    )
+                }
+                androidx.compose.foundation.text.BasicTextField(
+                    value = value,
+                    onValueChange = onChange,
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        color = MaterialTheme.colorScheme.onSurface,
+                    ),
+                    cursorBrush = androidx.compose.ui.graphics.SolidColor(
+                        MaterialTheme.colorScheme.primary,
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            if (value.isNotEmpty()) {
+                IconButton(onClick = { onChange("") }, modifier = Modifier.size(28.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Clear search",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -392,6 +439,7 @@ private fun CategoryStrip(
     iconKey: (CategoryEntity) -> String,
     onSelect: (String) -> Unit,
 ) {
+    val pastels = PocketSaveTokens.pastels
     LazyRow(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         contentPadding = PaddingValues(horizontal = 12.dp),
@@ -400,27 +448,18 @@ private fun CategoryStrip(
         items(categories, key = { it.uid }) { category ->
             val selected = category.name == selectedName
             val count = activeCount(category.name)
-            val labelText = if (count > 0) "${category.name} • $count" else category.name
-            val tint = category.colorHex
-                ?.let { ColorOption.byHex(it)?.color ?: ColorOption.parseHex(it) }
-                ?: MaterialTheme.colorScheme.onSurface
-            FilterChip(
+            val index = categories.indexOf(category)
+            val (softTint, deepInk) = com.pocketsave.core.home.components.VaultPaletteCycle
+                .tintFor(pastels, index, category.colorHex)
+            StickerChip(
+                label = if (count > 0) "${category.name} · $count" else category.name,
+                leadingEmoji = com.pocketsave.core.vault.icons.CategoryEmoji.resolve(iconKey(category)),
                 selected = selected,
+                tint = pastels.canvasTint,
+                selectedTint = softTint,
+                ink = MaterialTheme.colorScheme.onSurfaceVariant,
+                selectedInk = deepInk,
                 onClick = { onSelect(category.name) },
-                label = {
-                    Text(
-                        text = labelText,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector = com.pocketsave.core.vault.icons.AppIcon.resolveIcon(iconKey(category)),
-                        contentDescription = null,
-                        tint = tint,
-                    )
-                },
             )
         }
     }
@@ -496,32 +535,41 @@ private fun indexOfItemInSections(
 
 @Composable
 private fun CategoryHeader(iconKey: String, colorHex: String?, name: String, count: Int) {
-    val tint = colorHex
-        ?.let { ColorOption.byHex(it)?.color ?: ColorOption.parseHex(it) }
-        ?: MaterialTheme.colorScheme.onSurface
+    val pastels = PocketSaveTokens.pastels
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            imageVector = com.pocketsave.core.vault.icons.AppIcon.resolveIcon(iconKey),
-            contentDescription = null,
-            tint = tint,
+        com.pocketsave.core.vault.icons.CategoryEmojiTile(
+            iconKey = iconKey,
+            colorHex = colorHex,
+            size = 36.dp,
+            cornerRadius = 10.dp,
         )
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(10.dp))
         Text(
             text = name,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.headlineSmall.copy(
+                fontStyle = androidx.compose.ui.text.font.FontStyle.Normal,
+            ),
+            color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.weight(1f),
         )
-        Text(
-            text = "$count",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Surface(
+            color = pastels.canvasTint,
+            shape = RoundedCornerShape(999.dp),
+        ) {
+            Text(
+                text = "$count",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.SemiBold,
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            )
+        }
     }
 }
 
@@ -557,12 +605,12 @@ private fun VaultItemRowView(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .padding(horizontal = 16.dp, vertical = 5.dp)
             .alpha(if (hidden) 0f else 1f)
             .scale(landingScale)
             .clickable(enabled = !hidden) { onEdit(row.item) },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(12.dp),
+        shape = AppShapes.SoftCard,
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -719,13 +767,25 @@ private fun LoadingState() {
 
 @Composable
 private fun EmptyState(search: String) {
+    val pastels = PocketSaveTokens.pastels
     Box(
         modifier = Modifier.fillMaxSize().padding(24.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = if (search.isNotBlank()) "No items match \"$search\"." else "Your vault is empty. Tap Add item to get started.",
-            style = MaterialTheme.typography.bodyLarge,
-        )
+        if (search.isNotBlank()) {
+            AffectionateEmpty(
+                title = "Nothing under \"$search\".",
+                body = "Try a different word, or tap Add item to start a new one.",
+                icon = Icons.Default.Search,
+                accent = pastels.lavenderDeep,
+            )
+        } else {
+            AffectionateEmpty(
+                title = "A little empty in here.",
+                body = "Your vault starts bare. Tap Add item to save the things you buy often — prices, units, and all.",
+                icon = Icons.Default.Category,
+                accent = pastels.mintDeep,
+            )
+        }
     }
 }

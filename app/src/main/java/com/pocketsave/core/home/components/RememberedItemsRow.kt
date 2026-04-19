@@ -16,9 +16,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -30,12 +29,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.pocketsave.common.ui.AppShapes
 import com.pocketsave.common.ui.CardShadowColor
 import com.pocketsave.common.ui.PocketSaveTokens
+import com.pocketsave.common.ui.components.PSSectionHeader
+import com.pocketsave.common.ui.decor.grainOverlay
 import com.pocketsave.core.home.pressScale
 
 data class RememberedItem(
@@ -46,13 +49,16 @@ data class RememberedItem(
     val categoryIcon: ImageVector,
     val categoryTint: Color,
     val iconTint: Color,
+    /** Stable icon-key → resolves to the same emoji the vault uses. */
+    val iconKey: String? = null,
+    /** Stored category colour hex for the emoji tile's soft tint. */
+    val categoryColorHex: String? = null,
 )
 
 /**
- * "We remember these prices" — shows the user's item vault entries with a
- * known shopping price so the app feels like it has context on their grocery
- * life. Scrolls horizontally and hides itself entirely when there's nothing to
- * say, so the page doesn't display an empty promise.
+ * "Your usuals" — the user's saved vault entries with a remembered shopping
+ * price. Hides the whole section when no prices exist (no forced empty
+ * state) so Home never feels like it's nagging for data.
  */
 @Composable
 fun RememberedItemsRow(
@@ -61,36 +67,43 @@ fun RememberedItemsRow(
     modifier: Modifier = Modifier,
 ) {
     if (items.isEmpty()) return
+    val pastels = PocketSaveTokens.pastels
     Column(modifier = modifier.fillMaxWidth()) {
-        SectionHeader(
-            title = "PocketSave remembers",
-            subtitle = "Usual prices from your vault",
+        PSSectionHeader(
+            title = "Your usuals",
+            kicker = "prices we remember",
+            accent = pastels.butterDeep,
+            subtitle = "What you paid last — carried forward.",
             onSeeAll = onOpenVault,
         )
         Spacer(Modifier.height(12.dp))
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             items(items, key = { it.id }) { item ->
-                RememberedItemCard(item = item, onClick = onOpenVault)
+                val index = items.indexOf(item)
+                val shape = if (index % 2 == 0) AppShapes.Pebble else AppShapes.PebbleAlt
+                RememberedItemCard(item = item, shape = shape, onClick = onOpenVault)
             }
         }
     }
 }
 
 @Composable
-private fun RememberedItemCard(item: RememberedItem, onClick: () -> Unit) {
+private fun RememberedItemCard(item: RememberedItem, shape: Shape, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
+    val pastels = PocketSaveTokens.pastels
     Surface(
         color = Color.Transparent,
         modifier = Modifier
-            .width(170.dp)
+            .width(178.dp)
             .shadow(
                 elevation = 10.dp,
-                shape = RoundedCornerShape(22.dp),
+                shape = shape,
                 ambientColor = CardShadowColor,
                 spotColor = CardShadowColor,
             )
-            .clip(RoundedCornerShape(22.dp))
+            .clip(shape)
             .background(MaterialTheme.colorScheme.surface)
+            .grainOverlay(tint = pastels.grain, density = 0.5f)
             .pressScale(interaction)
             .clickable(
                 interactionSource = interaction,
@@ -100,41 +113,34 @@ private fun RememberedItemCard(item: RememberedItem, onClick: () -> Unit) {
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(item.categoryTint),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = item.categoryIcon,
-                        contentDescription = null,
-                        tint = item.iconTint,
-                        modifier = Modifier.size(16.dp),
-                    )
-                }
+                com.pocketsave.core.vault.icons.CategoryEmojiTile(
+                    iconKey = item.iconKey,
+                    colorHex = item.categoryColorHex,
+                    size = 36.dp,
+                    cornerRadius = 11.dp,
+                    fallbackTint = item.categoryTint,
+                )
                 Spacer(Modifier.weight(1f))
                 SparkBadge()
             }
             Spacer(Modifier.height(14.dp))
             Text(
                 text = item.name,
-                style = MaterialTheme.typography.titleSmall.copy(
+                style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.SemiBold,
                 ),
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
                     text = item.priceLabel,
-                    style = MaterialTheme.typography.titleMedium.copy(
+                    style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.SemiBold,
                     ),
-                    color = MaterialTheme.colorScheme.primary,
+                    color = pastels.peachDeep,
                 )
                 if (!item.unit.isNullOrBlank()) {
                     Spacer(Modifier.width(4.dp))
@@ -142,7 +148,7 @@ private fun RememberedItemCard(item: RememberedItem, onClick: () -> Unit) {
                         text = "/ ${item.unit}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 2.dp),
+                        modifier = Modifier.padding(bottom = 3.dp),
                     )
                 }
             }
@@ -152,20 +158,21 @@ private fun RememberedItemCard(item: RememberedItem, onClick: () -> Unit) {
 
 @Composable
 private fun SparkBadge() {
-    // A tiny "we learned this" mark so the price feels earned, not arbitrary.
+    // "We learned this" — a small butter-toned sticker so the remembered
+    // price feels earned rather than arbitrary.
     val pastels = PocketSaveTokens.pastels
     Box(
         modifier = Modifier
-            .size(22.dp)
+            .size(24.dp)
             .clip(CircleShape)
             .background(pastels.butterSoft),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
-            imageVector = Icons.Outlined.Bolt,
+            imageVector = Icons.Rounded.AutoAwesome,
             contentDescription = null,
             tint = pastels.butterDeep,
-            modifier = Modifier.size(12.dp),
+            modifier = Modifier.size(13.dp),
         )
     }
 }

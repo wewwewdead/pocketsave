@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.AddShoppingCart
 import androidx.compose.material.icons.outlined.Inventory2
+import androidx.compose.material.icons.outlined.ShoppingBasket
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -47,13 +48,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.pocketsave.billing.FeatureLimits
 import com.pocketsave.billing.PremiumFeature
 import com.pocketsave.billing.SubscriptionManager
 import com.pocketsave.billing.rememberPaywallGate
+import com.pocketsave.common.ui.AppShapes
 import com.pocketsave.common.ui.CardShadowColor
 import com.pocketsave.common.ui.Motion
 import com.pocketsave.common.ui.PocketSaveTokens
+import com.pocketsave.common.ui.decor.grainOverlay
 import com.pocketsave.core.cart.CreateCartSheet
 import com.pocketsave.core.cart.VaultSelectionStore
 import com.pocketsave.core.paywall.CapHintBanner
@@ -102,9 +106,9 @@ fun ActiveTripsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Active trips",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.SemiBold,
+                        text = "Trips in motion",
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Normal,
                         ),
                     )
                 },
@@ -165,15 +169,34 @@ fun ActiveTripsScreen(
                     val items = state.cartItemsByCart[cart.id].orEmpty()
                     val status = CartStatus.fromRaw(cart.status)
                     val spent = vaultService.computeTotalSpent(status, items)
-                    ActiveTripRowCard(
-                        cart = cart,
-                        status = status,
-                        itemCount = items.size,
+                    val hasBudget = cart.budget > 0.0
+                    val over = hasBudget && spent > cart.budget
+                    val remainingLabel = when {
+                        !hasBudget -> null
+                        over -> formatter.format(spent - cart.budget)
+                        else -> formatter.format((cart.budget - spent).coerceAtLeast(0.0))
+                    }
+                    val delta = when {
+                        remainingLabel == null -> com.pocketsave.common.ui.components.TripBudgetDelta.None
+                        over -> com.pocketsave.common.ui.components.TripBudgetDelta.Over("−$remainingLabel")
+                        else -> com.pocketsave.common.ui.components.TripBudgetDelta.Saved("+$remainingLabel")
+                    }
+                    com.pocketsave.common.ui.components.NestedBudgetCard(
+                        headline = cart.name.ifBlank { "Untitled trip" },
+                        itemCountLabel = items.size.toString(),
+                        dateLabel = status.displayName,
                         spentLabel = formatter.format(spent),
                         budgetLabel = cart.budget.takeIf { it > 0.0 }?.let { formatter.format(it) },
                         progress = if (cart.budget > 0.0 && spent > 0.0) {
                             (spent / cart.budget).toFloat().coerceIn(0f, 1f)
                         } else 0f,
+                        delta = delta,
+                        sticker = {
+                            com.pocketsave.common.ui.components.BudgetCardSticker(
+                                icon = androidx.compose.material.icons.Icons.Outlined.ShoppingBasket,
+                                tint = PocketSaveTokens.pastels.mintDeep,
+                            )
+                        },
                         onClick = { onOpenCart(cart.id) },
                     )
                 }
@@ -207,19 +230,27 @@ private fun ActiveSummaryCard(
     val interaction = remember { MutableInteractionSource() }
     Surface(
         color = pastels.mintSoft,
-        shape = RoundedCornerShape(24.dp),
-        modifier = Modifier.fillMaxWidth(),
+        shape = AppShapes.HeroCard,
+        modifier = Modifier
+            .fillMaxWidth()
+            .grainOverlay(tint = pastels.grain, density = 0.6f),
     ) {
-        Column(modifier = Modifier.padding(18.dp)) {
+        Column(modifier = Modifier.padding(20.dp)) {
             Text(
-                text = "ONGOING",
-                style = MaterialTheme.typography.labelSmall,
+                text = "in motion",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 0.9.sp,
+                ),
                 color = pastels.mintDeep.copy(alpha = 0.85f),
             )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(2.dp))
             Text(
                 text = "$count trip${if (count == 1) "" else "s"} in progress",
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                style = MaterialTheme.typography.displaySmall.copy(
+                    fontWeight = FontWeight.Medium,
+                ),
                 color = pastels.mintDeep,
             )
             Spacer(Modifier.height(12.dp))
@@ -306,12 +337,13 @@ private fun ActiveTripRowCard(
             .fillMaxWidth()
             .shadow(
                 elevation = 8.dp,
-                shape = RoundedCornerShape(22.dp),
+                shape = AppShapes.SoftCard,
                 ambientColor = CardShadowColor,
                 spotColor = CardShadowColor,
             )
-            .clip(RoundedCornerShape(22.dp))
+            .clip(AppShapes.SoftCard)
             .background(MaterialTheme.colorScheme.surface)
+            .grainOverlay(tint = pastels.grain, density = 0.4f)
             .pressScale(interaction)
             .clickable(
                 interactionSource = interaction,
@@ -446,49 +478,19 @@ private fun BudgetBar(progress: Float, hasBudget: Boolean) {
 @Composable
 private fun EmptyActiveState(onCreateTrip: () -> Unit) {
     val pastels = PocketSaveTokens.pastels
-    val interaction = remember { MutableInteractionSource() }
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(22.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .pressScale(interaction)
-            .clickable(
-                interactionSource = interaction,
-                indication = null,
-                onClick = onCreateTrip,
-            ),
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            horizontalAlignment = Alignment.Start,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(pastels.peachSoft),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.AddShoppingCart,
-                    contentDescription = null,
-                    tint = pastels.peachDeep,
-                    modifier = Modifier.size(20.dp),
+    com.pocketsave.common.ui.components.AffectionateEmpty(
+        title = "Nothing in the aisles yet.",
+        body = "Start a trip when you're ready — set a gentle budget, pull from your vault, and we'll walk with you.",
+        icon = Icons.Outlined.AddShoppingCart,
+        accent = pastels.mintDeep,
+        cta = {
+            androidx.compose.material3.Button(onClick = onCreateTrip) {
+                Text(
+                    text = "Start a trip",
+                    modifier = Modifier.padding(horizontal = 6.dp),
+                    fontWeight = FontWeight.SemiBold,
                 )
             }
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = "No trips in progress yet",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "Tap to start a new trip — set a budget, pull from your vault, and we'll track it.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
+        },
+    )
 }

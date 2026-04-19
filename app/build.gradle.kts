@@ -49,7 +49,7 @@ android {
         applicationId = "com.pocketsave"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
+        versionCode = 9
         versionName = "0.1.2"
         vectorDrawables { useSupportLibrary = true }
 

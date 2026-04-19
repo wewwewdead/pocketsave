@@ -13,41 +13,48 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
+import com.pocketsave.common.ui.PocketSaveTokens
 
 /**
- * A thin animated progress bar used across the onboarding data-entry steps.
- * The fill width animates with the shared emphasized spring so advancing or
- * going back feels like one connected motion with the content transition.
- *
- * [progress] should be in the 0f..1f range. Render nothing when null.
+ * The onboarding progress bar. A fuller 6dp track with pill ends and a
+ * sage→mint gradient fill so stepping through the flow feels like watching
+ * a quiet little plant grow.
  */
 @Composable
 fun OnboardingProgressBar(
     progress: Float?,
     modifier: Modifier = Modifier,
 ) {
+    val pastels = PocketSaveTokens.pastels
     val target = progress?.coerceIn(0f, 1f) ?: 0f
     val animated by animateFloatAsState(
         targetValue = target,
         animationSpec = OnboardingMotion.EmphasizedSpring,
         label = "onboarding-progress",
     )
+    val gradient = Brush.horizontalGradient(
+        colors = listOf(
+            MaterialTheme.colorScheme.primary,
+            pastels.mintDeep,
+        ),
+    )
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(3.dp)
-            .clip(RoundedCornerShape(2.dp))
-            .background(Color(0x14000000)),
+            .height(6.dp)
+            .clip(RoundedCornerShape(999.dp))
+            .background(pastels.canvasTint),
         contentAlignment = Alignment.CenterStart,
     ) {
         Box(
             modifier = Modifier
                 .fillMaxHeight()
                 .fillMaxWidth(animated)
-                .background(MaterialTheme.colorScheme.primary),
+                .clip(RoundedCornerShape(999.dp))
+                .background(gradient),
         )
     }
 }

@@ -1,31 +1,31 @@
 [
     {
-        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-mdpi_ic_launcher_round.png.flat",
-        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-mdpi\\ic_launcher_round.png"
-    },
-    {
         "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-xxxhdpi_ic_launcher_round.png.flat",
         "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-xxxhdpi\\ic_launcher_round.png"
     },
     {
-        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\xml_file_paths.xml.flat",
-        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\xml\\file_paths.xml"
-    },
-    {
-        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\xml_backup_rules.xml.flat",
-        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\xml\\backup_rules.xml"
+        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-mdpi_ic_launcher_round.png.flat",
+        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-mdpi\\ic_launcher_round.png"
     },
     {
         "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-hdpi_ic_launcher_foreground.png.flat",
         "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-hdpi\\ic_launcher_foreground.png"
     },
     {
+        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\xml_backup_rules.xml.flat",
+        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\xml\\backup_rules.xml"
+    },
+    {
+        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\xml_file_paths.xml.flat",
+        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\xml\\file_paths.xml"
+    },
+    {
         "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-anydpi-v26_ic_launcher_round.xml.flat",
         "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-anydpi-v26\\ic_launcher_round.xml"
     },
     {
-        "merged": "com.pocketsave.app-debug-81:/mipmap-hdpi_ic_launcher_round.png.flat",
-        "source": "com.pocketsave.app-main-83:/mipmap-hdpi/ic_launcher_round.png"
+        "merged": "com.pocketsave.app-debug-81:/font_poppins_bold.ttf.flat",
+        "source": "com.pocketsave.app-main-83:/font/poppins_bold.ttf"
     },
     {
         "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-mdpi_ic_launcher.png.flat",
@@ -40,24 +40,24 @@
         "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\layout\\widget_initial_loading.xml"
     },
     {
-        "merged": "com.pocketsave.app-debug-81:/mipmap-hdpi_ic_launcher.png.flat",
-        "source": "com.pocketsave.app-main-83:/mipmap-hdpi/ic_launcher.png"
+        "merged": "com.pocketsave.app-debug-81:/font_poppins_semibold.ttf.flat",
+        "source": "com.pocketsave.app-main-83:/font/poppins_semibold.ttf"
     },
     {
-        "merged": "com.pocketsave.app-debug-81:/mipmap-xxxhdpi_ic_launcher_round.png.flat",
-        "source": "com.pocketsave.app-main-83:/mipmap-xxxhdpi/ic_launcher_round.png"
-    },
-    {
-        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-anydpi-v26_ic_launcher.xml.flat",
-        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-anydpi-v26\\ic_launcher.xml"
+        "merged": "com.pocketsave.app-debug-81:/font_poppins_medium.ttf.flat",
+        "source": "com.pocketsave.app-main-83:/font/poppins_medium.ttf"
     },
     {
         "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-xhdpi_ic_launcher_round.png.flat",
         "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-xhdpi\\ic_launcher_round.png"
     },
     {
-        "merged": "com.pocketsave.app-debug-81:/mipmap-xxxhdpi_ic_launcher.png.flat",
-        "source": "com.pocketsave.app-main-83:/mipmap-xxxhdpi/ic_launcher.png"
+        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-anydpi-v26\\ic_launcher.xml"
+    },
+    {
+        "merged": "com.pocketsave.app-debug-81:/font_poppins_regular.ttf.flat",
+        "source": "com.pocketsave.app-main-83:/font/poppins_regular.ttf"
     },
     {
         "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-xxhdpi_ic_launcher_round.png.flat",
@@ -68,16 +68,12 @@
         "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-mdpi\\ic_launcher_foreground.png"
     },
     {
-        "merged": "com.pocketsave.app-debug-81:/mipmap-xxxhdpi_ic_launcher_foreground.png.flat",
-        "source": "com.pocketsave.app-main-83:/mipmap-xxxhdpi/ic_launcher_foreground.png"
-    },
-    {
         "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-xhdpi_ic_launcher.png.flat",
         "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-xhdpi\\ic_launcher.png"
     },
     {
-        "merged": "com.pocketsave.app-debug-81:/mipmap-mdpi_ic_launcher_foreground.png.flat",
-        "source": "com.pocketsave.app-main-83:/mipmap-mdpi/ic_launcher_foreground.png"
+        "merged": "com.pocketsave.app-debug-81:/font_poppins_light.ttf.flat",
+        "source": "com.pocketsave.app-main-83:/font/poppins_light.ttf"
     },
     {
         "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-xhdpi_ic_launcher_foreground.png.flat",
@@ -88,40 +84,20 @@
         "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-hdpi\\ic_launcher.png"
     },
     {
-        "merged": "com.pocketsave.app-debug-81:/mipmap-mdpi_ic_launcher_round.png.flat",
-        "source": "com.pocketsave.app-main-83:/mipmap-mdpi/ic_launcher_round.png"
-    },
-    {
-        "merged": "com.pocketsave.app-debug-81:/mipmap-mdpi_ic_launcher.png.flat",
-        "source": "com.pocketsave.app-main-83:/mipmap-mdpi/ic_launcher.png"
+        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-xxhdpi_ic_launcher_foreground.png.flat",
+        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-xxhdpi\\ic_launcher_foreground.png"
     },
     {
         "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\xml_data_extraction_rules.xml.flat",
         "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\xml\\data_extraction_rules.xml"
     },
     {
-        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-xxhdpi_ic_launcher_foreground.png.flat",
-        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-xxhdpi\\ic_launcher_foreground.png"
-    },
-    {
         "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-xxxhdpi_ic_launcher.png.flat",
         "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-xxxhdpi\\ic_launcher.png"
     },
     {
-        "merged": "com.pocketsave.app-debug-81:/mipmap-hdpi_ic_launcher_foreground.png.flat",
-        "source": "com.pocketsave.app-main-83:/mipmap-hdpi/ic_launcher_foreground.png"
-    },
-    {
-        "merged": "com.pocketsave.app-debug-81:/mipmap-xxhdpi_ic_launcher_round.png.flat",
-        "source": "com.pocketsave.app-main-83:/mipmap-xxhdpi/ic_launcher_round.png"
-    },
-    {
         "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-xxxhdpi_ic_launcher_foreground.png.flat",
         "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-xxxhdpi\\ic_launcher_foreground.png"
-    },
-    {
-        "merged": "com.pocketsave.app-debug-81:/mipmap-xhdpi_ic_launcher_foreground.png.flat",
-        "source": "com.pocketsave.app-main-83:/mipmap-xhdpi/ic_launcher_foreground.png"
     },
     {
         "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\xml_purchased_items_widget_info.xml.flat",
@@ -130,21 +106,5 @@
     {
         "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-hdpi_ic_launcher_round.png.flat",
         "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-hdpi\\ic_launcher_round.png"
-    },
-    {
-        "merged": "com.pocketsave.app-debug-81:/mipmap-xhdpi_ic_launcher.png.flat",
-        "source": "com.pocketsave.app-main-83:/mipmap-xhdpi/ic_launcher.png"
-    },
-    {
-        "merged": "com.pocketsave.app-debug-81:/mipmap-xxhdpi_ic_launcher_foreground.png.flat",
-        "source": "com.pocketsave.app-main-83:/mipmap-xxhdpi/ic_launcher_foreground.png"
-    },
-    {
-        "merged": "com.pocketsave.app-debug-81:/mipmap-xhdpi_ic_launcher_round.png.flat",
-        "source": "com.pocketsave.app-main-83:/mipmap-xhdpi/ic_launcher_round.png"
-    },
-    {
-        "merged": "com.pocketsave.app-debug-81:/mipmap-xxhdpi_ic_launcher.png.flat",
-        "source": "com.pocketsave.app-main-83:/mipmap-xxhdpi/ic_launcher.png"
     }
 ]

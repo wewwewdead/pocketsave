@@ -1,9 +1,11 @@
 package com.pocketsave.data.prefs
 
 import android.content.Context
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -35,6 +37,7 @@ class AppPreferences(private val context: Context) {
         val VISIBLE_CATEGORIES_JSON = stringPreferencesKey("visible_categories_json")
         val SHOULD_SHOW_FIRST_RUN_HINTS = booleanPreferencesKey("should_show_first_run_hints")
         val IS_PRO_CACHED = booleanPreferencesKey("is_pro_cached")
+        val MONTHLY_BUDGET = doublePreferencesKey("monthly_budget")
     }
 
     val hasCompletedOnboarding: Flow<Boolean> =
@@ -71,6 +74,14 @@ class AppPreferences(private val context: Context) {
      */
     val isProCached: Flow<Boolean> =
         context.dataStore.data.map { it[Keys.IS_PRO_CACHED] ?: false }
+
+    /**
+     * Optional monthly spending ceiling in the user's selected currency. `0.0`
+     * means "not set" — the trip-creation flow short-circuits the warning
+     * dialog when the budget is unset so first-run users never see it.
+     */
+    val monthlyBudget: Flow<Double> =
+        context.dataStore.data.map { it[Keys.MONTHLY_BUDGET] ?: 0.0 }
 
     suspend fun hasCompletedOnboardingNow(): Boolean =
         hasCompletedOnboarding.first()
@@ -110,6 +121,12 @@ class AppPreferences(private val context: Context) {
         context.dataStore.edit { it[Keys.SHOULD_SHOW_FIRST_RUN_HINTS] = value }
     }
 
+    suspend fun setMonthlyBudget(value: Double) {
+        context.dataStore.edit {
+            if (value <= 0.0) it.remove(Keys.MONTHLY_BUDGET) else it[Keys.MONTHLY_BUDGET] = value
+        }
+    }
+
     /**
      * Wipes every stored preference. Used by the Reset-App flow in settings so
      * the next launch routes through onboarding and all persisted choices
@@ -119,4 +136,14 @@ class AppPreferences(private val context: Context) {
     suspend fun clearAll() {
         context.dataStore.edit { it.clear() }
     }
+}
+
+/**
+ * Composition-local handle for [AppPreferences]. Provided once at the nav-host
+ * root so deep composables (sheets, dialogs) can read prefs without every
+ * intermediate screen needing a parameter for it. Defaults to throwing because
+ * an unprovided prefs handle is always a wiring bug, not a survivable state.
+ */
+val LocalAppPreferences = staticCompositionLocalOf<AppPreferences> {
+    error("LocalAppPreferences not provided — wrap the composition in a CompositionLocalProvider at the nav root.")
 }
