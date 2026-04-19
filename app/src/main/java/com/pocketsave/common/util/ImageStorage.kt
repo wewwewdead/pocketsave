@@ -77,6 +77,16 @@ class ImageStorage(private val context: Context) {
         if (file != null && file.exists() && file.parentFile == captureDir) file.delete()
     }
 
+    /**
+     * Wipes every persisted image and pending capture. Used by the Reset-App
+     * flow so the filesystem footprint matches the freshly-cleared database.
+     * IO-bound, so callers dispatch to the appropriate scope.
+     */
+    suspend fun clearAll() = withContext(Dispatchers.IO) {
+        rootDir.listFiles()?.forEach { runCatching { it.delete() } }
+        captureDir.listFiles()?.forEach { runCatching { it.delete() } }
+    }
+
     data class CaptureTarget(val file: File, val uri: Uri)
 
     private fun writeBitmap(bitmap: Bitmap): String {

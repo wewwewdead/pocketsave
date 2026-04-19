@@ -30,6 +30,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.pocketsave.core.haptics.AppHaptic
+import com.pocketsave.core.haptics.rememberAppHaptics
 import com.pocketsave.core.onboarding.components.CategoryPicker
 import com.pocketsave.core.onboarding.components.ItemNameField
 import com.pocketsave.core.onboarding.components.PackageSizeFields
@@ -51,6 +53,20 @@ import kotlinx.coroutines.flow.drop
 @Composable
 fun OnboardingFirstItemScreen(viewModel: OnboardingViewModel) {
     val form = viewModel.formViewModel
+    val haptics = rememberAppHaptics()
+
+    // First-item save celebration — one Confirm buzz per successful save.
+    // Keyed on the counter so a second save (if the user retries) re-fires,
+    // but recomposition alone never does.
+    LaunchedEffect(viewModel.itemCelebrationTrigger) {
+        if (viewModel.itemCelebrationTrigger > 0) haptics.perform(AppHaptic.Confirm)
+    }
+    // Duplicate / validation reject. Each distinct error message produces
+    // exactly one subtle bump; the key includes the string so repeated
+    // duplicates with the same text don't re-fire.
+    LaunchedEffect(viewModel.duplicateError) {
+        if (viewModel.duplicateError != null) haptics.perform(AppHaptic.Reject)
+    }
 
     // Debounced duplicate check whenever the item name changes. Drop(1) so we
     // ignore the initial empty-state emission that snapshotFlow fires on

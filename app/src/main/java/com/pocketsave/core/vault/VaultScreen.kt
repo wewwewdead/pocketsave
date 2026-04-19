@@ -72,8 +72,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.pocketsave.billing.FeatureLimits
+import com.pocketsave.billing.PremiumFeature
+import com.pocketsave.billing.SubscriptionManager
+import com.pocketsave.billing.rememberPaywallGate
 import com.pocketsave.common.util.ColorOption
 import com.pocketsave.core.cart.VaultSelectionStore
+import com.pocketsave.core.paywall.CapHintBanner
 import com.pocketsave.core.scanner.TextRecognitionService
 import com.pocketsave.core.scanner.classifier.PackagingClassifier
 import com.pocketsave.core.service.VaultService
@@ -99,8 +104,10 @@ fun VaultScreen(
     selectionStore: VaultSelectionStore,
     textRecognitionService: TextRecognitionService,
     packagingClassifier: PackagingClassifier,
+    subscriptionManager: SubscriptionManager,
     onBack: () -> Unit,
     onCreateCartRequested: (cartId: String) -> Unit,
+    onOpenPaywall: (PremiumFeature) -> Unit,
 ) {
     val viewModel: VaultViewModel = viewModel(
         factory = VaultViewModel.Factory(vaultService, selectionStore),
@@ -113,6 +120,29 @@ fun VaultScreen(
     var showCategoryManager by remember { mutableStateOf(false) }
     var showCreateCartSheet by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+
+    val paywallGate = rememberPaywallGate(subscriptionManager, vaultService, onOpenPaywall)
+    val isPro by subscriptionManager.isPro.collectAsState()
+    val requestAddItem: () -> Unit = {
+        paywallGate.check(PremiumFeature.AddVaultItem) { showAddItemSheet = true }
+    }
+    val requestCreateCartFromSelection: () -> Unit = {
+        paywallGate.check(PremiumFeature.CreateActiveTrip) { showCreateCartSheet = true }
+    }
+    // Scanner sits inside ItemFormSheet but is gated here so the sheet itself
+    // remains billing-agnostic: it just delegates the "should I open scan?"
+    // decision back to the caller's wrapper.
+    val requestScanner: (onAllowed: () -> Unit) -> Unit = { onAllowed ->
+        paywallGate.check(PremiumFeature.Scanner, onAllowed)
+    }
+    // Pass-through hints for the ItemFormSheet / CategoriesManagerSheet so
+    // their locked affordances render a "PRO" pill before the user taps.
+    val scannerLocked = !isPro
+    val customCategoryCap = if (isPro) null else FeatureLimits.FREE_CUSTOM_CATEGORIES
+    // Item-cap banner visibility. Only shown when a free user is *at* the
+    // cap — below it the happy path stays uncluttered.
+    val activeItemCount = ui.totalItems
+    val showItemCapBanner = !isPro && activeItemCount >= FeatureLimits.FREE_VAULT_ITEMS
     val listState = rememberLazyListState()
     val flightState = rememberVaultFlightState()
     // The LazyColumn's own top-left in root coordinates. Captured via
@@ -161,13 +191,13 @@ fun VaultScreen(
                 BottomSelectionBar(
                     count = ui.activeSelectionCount,
                     onClear = viewModel::clearSelection,
-                    onContinue = { showCreateCartSheet = true },
+                    onContinue = requestCreateCartFromSelection,
                 )
             }
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { showAddItemSheet = true },
+                onClick = requestAddItem,
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
                 text = { Text("Add item") },
             )
@@ -188,6 +218,16 @@ fun VaultScreen(
                 },
                 onSelect = viewModel::selectCategory,
             )
+            if (showItemCapBanner) {
+                // Gentle inline notice — only visible at the cap, never below
+                // it. Tapping anywhere opens the paywall with the AddVaultItem
+                // trigger so the hero copy matches the reason.
+                CapHintBanner(
+                    label = "$activeItemCount of ${FeatureLimits.FREE_VAULT_ITEMS} items saved.",
+                    onUpgrade = { onOpenPaywall(PremiumFeature.AddVaultItem) },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
             Box(modifier = Modifier.fillMaxSize()) {
                 when {
                     !ui.isReady -> LoadingState()
@@ -243,6 +283,8 @@ fun VaultScreen(
             },
             textRecognitionService = textRecognitionService,
             packagingClassifier = packagingClassifier,
+            onScanRequested = requestScanner,
+            scannerLocked = scannerLocked,
         )
     }
 
@@ -255,6 +297,8 @@ fun VaultScreen(
             onSaved = { _ -> viewModel.clearEditRequest() },
             textRecognitionService = textRecognitionService,
             packagingClassifier = packagingClassifier,
+            onScanRequested = requestScanner,
+            scannerLocked = scannerLocked,
         )
     }
 
@@ -280,6 +324,10 @@ fun VaultScreen(
         CategoriesManagerSheet(
             vaultService = vaultService,
             onDismiss = { showCategoryManager = false },
+            onAddCategoryRequested = { onAllowed ->
+                paywallGate.check(PremiumFeature.AddCustomCategory, onAllowed)
+            },
+            customCategoryCap = customCategoryCap,
         )
     }
 

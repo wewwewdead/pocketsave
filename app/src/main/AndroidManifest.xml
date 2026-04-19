@@ -9,6 +9,11 @@
         android:name="android.hardware.camera"
         android:required="false" />
 
+    <!-- RevenueCat needs network access for offerings + customer-info fetches and
+         to complete Play Billing purchase events. Play Billing itself is added
+         transitively by the Purchases SDK via com.android.vending.BILLING. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:name=".PocketSaveApplication"
         android:allowBackup="true"

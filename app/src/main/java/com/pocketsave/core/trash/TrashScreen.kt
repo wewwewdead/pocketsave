@@ -42,6 +42,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.pocketsave.core.haptics.AppHaptic
+import com.pocketsave.core.haptics.rememberAppHaptics
 import com.pocketsave.core.service.VaultService
 import com.pocketsave.data.local.entity.CartEntity
 import com.pocketsave.data.local.entity.ItemEntity
@@ -67,6 +69,7 @@ fun TrashScreen(
 ) {
     val state by vaultService.state.collectAsState()
     val scope = rememberCoroutineScope()
+    val haptics = rememberAppHaptics()
     var selectedTab by remember { mutableStateOf(Tab.ITEMS) }
     var pendingItemDelete by remember { mutableStateOf<ItemEntity?>(null) }
     var pendingCartDelete by remember { mutableStateOf<CartEntity?>(null) }
@@ -107,6 +110,8 @@ fun TrashScreen(
                 Tab.ITEMS -> DeletedItemsList(
                     items = state.deletedItems,
                     onRestore = { item ->
+                        // Restore is a meaningful undo — Confirm, not Light.
+                        haptics.perform(AppHaptic.Confirm)
                         scope.launch { vaultService.restoreDeletedItem(item.id) }
                     },
                     onRequestPermanentDelete = { pendingItemDelete = it },
@@ -114,6 +119,7 @@ fun TrashScreen(
                 Tab.CARTS -> DeletedCartsList(
                     carts = state.deletedCarts,
                     onRestore = { cart ->
+                        haptics.perform(AppHaptic.Confirm)
                         scope.launch { vaultService.restoreDeletedCart(cart.id) }
                     },
                     onRequestPermanentDelete = { pendingCartDelete = it },
@@ -128,6 +134,10 @@ fun TrashScreen(
             body = "This item will be removed permanently. Any completed carts that referenced it keep a copy of the name and price.",
             onDismiss = { pendingItemDelete = null },
             onConfirm = {
+                // Reject on permanent delete — destructive confirmations
+                // get a calm "yes, that's gone" note rather than a Confirm
+                // that would feel celebratory for a delete.
+                haptics.perform(AppHaptic.Reject)
                 pendingItemDelete = null
                 scope.launch { vaultService.permanentlyDeleteItem(target.id) }
             },
@@ -140,6 +150,7 @@ fun TrashScreen(
             body = "Deletes the trip and its line items permanently. Vault items stay untouched.",
             onDismiss = { pendingCartDelete = null },
             onConfirm = {
+                haptics.perform(AppHaptic.Reject)
                 pendingCartDelete = null
                 scope.launch {
                     vaultService.permanentlyDeleteCart(target.id)

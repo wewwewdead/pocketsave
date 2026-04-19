@@ -68,7 +68,10 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
 import com.pocketsave.common.util.ImageStorage
+import com.pocketsave.core.haptics.AppHaptic
+import com.pocketsave.core.haptics.rememberAppHaptics
 import com.pocketsave.core.itemform.ItemFormViewModel
+import com.pocketsave.core.paywall.ProChip
 import com.pocketsave.core.scanner.ScannerScreen
 import com.pocketsave.core.scanner.TextRecognitionService
 import com.pocketsave.core.scanner.classifier.PackagingClassifier
@@ -109,14 +112,35 @@ fun ItemFormSheet(
     onSaved: (flightHint: ItemFormFlightHint?) -> Unit,
     textRecognitionService: TextRecognitionService? = null,
     packagingClassifier: PackagingClassifier? = null,
+    /**
+     * Called when the user taps **Scan**. The sheet forwards a callback that
+     * actually opens the scanner; the caller either runs it immediately
+     * (free action) or intercepts to show the paywall first. Default is
+     * "always allow" so previews and tests don't need a gate.
+     */
+    onScanRequested: (onAllowed: () -> Unit) -> Unit = { it() },
+    /**
+     * When `true`, a small "PRO" badge renders next to the Scan button so
+     * free users see the affordance is gated before they tap. Defaults to
+     * `false` so previews / tests show the unlocked form.
+     */
+    scannerLocked: Boolean = false,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
     val imageStorage = remember { ImageStorage(context.applicationContext) }
     val formVm = remember(existing?.id) { ItemFormViewModel(requiresPortion = false, requiresStore = true) }
     val scope = rememberCoroutineScope()
+    val haptics = rememberAppHaptics()
     var duplicateError by remember { mutableStateOf<String?>(null) }
     var isSaving by remember { mutableStateOf(false) }
+
+    // Reject whenever a distinct duplicate / validation message surfaces.
+    // Keyed on the message string so the same message doesn't replay on
+    // recomposition and so clearing the error (to null) doesn't fire.
+    LaunchedEffect(duplicateError) {
+        if (duplicateError != null) haptics.perform(AppHaptic.Reject)
+    }
     var debounceJob: Job? by remember { mutableStateOf(null) }
     var showScanner by remember { mutableStateOf(false) }
     var isProcessingImage by remember { mutableStateOf(false) }
@@ -267,10 +291,14 @@ fun ItemFormSheet(
                     modifier = Modifier.weight(1f),
                 )
                 if (textRecognitionService != null && packagingClassifier != null) {
-                    TextButton(onClick = { showScanner = true }) {
+                    TextButton(onClick = { onScanRequested { showScanner = true } }) {
                         Icon(Icons.Default.QrCodeScanner, contentDescription = null)
                         Spacer(Modifier.width(6.dp))
                         Text("Scan")
+                        if (scannerLocked) {
+                            Spacer(Modifier.width(6.dp))
+                            ProChip()
+                        }
                     }
                 }
             }
@@ -411,6 +439,11 @@ fun ItemFormSheet(
                             val ok = insertedItem != null || updated
                             isSaving = false
                             if (ok) {
+                                // Item actually persisted — one Confirm buzz
+                                // for the successful save. Fires before the
+                                // sheet dismisses so the user associates the
+                                // haptic with the action they just took.
+                                haptics.perform(AppHaptic.Confirm)
                                 val hint = if (insertedItem != null && originCenter != null) {
                                     ItemFormFlightHint(insertedItem, originCenter)
                                 } else null

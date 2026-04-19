@@ -108,6 +108,15 @@ class CartBackgroundStore(private val context: Context) {
         }
     }
 
+    /**
+     * Wipes every stored per-cart background entry. Used by the Reset-App flow
+     * — after the carts themselves are deleted there's nothing these keys can
+     * legitimately refer to anyway.
+     */
+    suspend fun clearAll() {
+        context.cartBackgroundDataStore.edit { it.clear() }
+    }
+
     companion object {
         private const val COLOR_PREFIX = "cartBackgroundColor_"
         private const val IMAGE_PREFIX = "cartBackgroundImage_"

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -70,7 +71,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.pocketsave.billing.PremiumFeature
+import com.pocketsave.billing.SubscriptionManager
+import com.pocketsave.billing.rememberPaywallGate
 import com.pocketsave.common.util.ColorOption
+import com.pocketsave.core.haptics.AppHaptic
+import com.pocketsave.core.haptics.rememberAppHaptics
+import com.pocketsave.core.paywall.ProChip
 import com.pocketsave.core.service.VaultService
 import com.pocketsave.data.prefs.CartBackgroundStore
 import com.pocketsave.domain.model.CartStatus
@@ -97,13 +104,16 @@ import androidx.compose.ui.graphics.Color
 fun CartDetailScreen(
     vaultService: VaultService,
     backgroundStore: CartBackgroundStore,
+    subscriptionManager: SubscriptionManager,
     cartId: String,
     onBack: () -> Unit,
+    onOpenPaywall: (PremiumFeature) -> Unit,
     onCompleteTripDone: () -> Unit = {},
     onShareTrip: (String) -> Unit = {},
     pendingDeepLink: com.pocketsave.app.PendingDeepLink? = null,
     onDeepLinkConsumed: () -> Unit = {},
 ) {
+    val paywallGate = rememberPaywallGate(subscriptionManager, vaultService, onOpenPaywall)
     val viewModel: CartDetailViewModel = viewModel(
         factory = CartDetailViewModel.Factory(vaultService, cartId),
     )
@@ -111,6 +121,7 @@ fun CartDetailScreen(
     val snapshot by vaultService.state.collectAsState()
     val bgColorHex by backgroundStore.colorHex(cartId).collectAsState(initial = null)
     val bgImageUri by backgroundStore.imageUri(cartId).collectAsState(initial = null)
+    val haptics = rememberAppHaptics()
 
     var showOverflow by remember { mutableStateOf(false) }
     var showRenameSheet by remember { mutableStateOf(false) }
@@ -181,15 +192,38 @@ fun CartDetailScreen(
                             onClick = { showOverflow = false; showBudgetSheet = true },
                         )
                         DropdownMenuItem(
-                            text = { Text("Customize background") },
-                            onClick = { showOverflow = false; showBackgroundPicker = true },
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("Customize background")
+                                    if (!paywallGate.isAllowed(PremiumFeature.CartTheme)) {
+                                        Spacer(Modifier.width(8.dp))
+                                        ProChip()
+                                    }
+                                }
+                            },
+                            onClick = {
+                                showOverflow = false
+                                paywallGate.check(PremiumFeature.CartTheme) {
+                                    showBackgroundPicker = true
+                                }
+                            },
                         )
                         if (ui.status == CartStatus.COMPLETED) {
                             DropdownMenuItem(
-                                text = { Text("Share trip") },
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("Share trip")
+                                        if (!paywallGate.isAllowed(PremiumFeature.TripShareCard)) {
+                                            Spacer(Modifier.width(8.dp))
+                                            ProChip()
+                                        }
+                                    }
+                                },
                                 onClick = {
                                     showOverflow = false
-                                    onShareTrip(cartId)
+                                    paywallGate.check(PremiumFeature.TripShareCard) {
+                                        onShareTrip(cartId)
+                                    }
                                 },
                             )
                         }
@@ -233,9 +267,17 @@ fun CartDetailScreen(
                 status = ui.status,
                 itemCount = ui.itemCount,
                 fulfilledCount = ui.fulfilledCount,
-                onStartShopping = viewModel::startShopping,
+                // Confirm for start-shopping and reopen-cart — both are
+                // meaningful lifecycle flips the user will remember doing.
+                onStartShopping = {
+                    haptics.perform(AppHaptic.Confirm)
+                    viewModel.startShopping()
+                },
                 onFinishTrip = { showFinishSheet = true },
-                onReopenCart = viewModel::reopenCart,
+                onReopenCart = {
+                    haptics.perform(AppHaptic.Confirm)
+                    viewModel.reopenCart()
+                },
             )
         },
     ) { inner ->
@@ -256,8 +298,18 @@ fun CartDetailScreen(
                     onPlanningPriceChange = viewModel::updatePlannedPrice,
                     onPlanningUnitChange = viewModel::updatePlannedUnit,
                     onPlanningStoreChange = viewModel::changeStore,
-                    onToggleFulfilled = viewModel::toggleFulfilled,
-                    onSkip = viewModel::skipDuringShopping,
+                    // Light ticks for shopping-mode state flips. Fulfilled
+                    // and skip are the two per-item gestures shoppers do
+                    // dozens of times — Light keeps the feedback quiet but
+                    // present so the action still feels acknowledged.
+                    onToggleFulfilled = { itemId ->
+                        haptics.perform(AppHaptic.Light)
+                        viewModel.toggleFulfilled(itemId)
+                    },
+                    onSkip = { itemId ->
+                        haptics.perform(AppHaptic.Light)
+                        viewModel.skipDuringShopping(itemId)
+                    },
                     onUnskip = viewModel::unskip,
                     onUpdateActual = viewModel::updateActual,
                     onActualStoreChange = viewModel::changeActualStore,
@@ -371,6 +423,9 @@ fun CartDetailScreen(
             viewModel = viewModel,
             onDismiss = { showFinishSheet = false },
             onConfirm = {
+                // The actual trip-completion moment — one Confirm so the
+                // user feels the milestone as the success sheet appears.
+                haptics.perform(AppHaptic.Confirm)
                 showFinishSheet = false
                 showCompletionSummary = true
             },

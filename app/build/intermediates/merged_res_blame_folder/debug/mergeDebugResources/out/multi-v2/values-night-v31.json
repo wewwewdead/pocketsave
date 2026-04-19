@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.pocketsave.app-mergeDebugResources-77:/values-night-v31/values-night-v31.xml",
+            "outputFile": "com.pocketsave.app-mergeDebugResources-79:/values-night-v31/values-night-v31.xml",
             "map": [
                 {
                     "source": "C:\\Users\\johnm\\.gradle\\caches\\transforms-4\\e589a47f545160c985f52857ae48586d\\transformed\\glance-1.0.0\\res\\values-night-v31\\values-night-v31.xml",

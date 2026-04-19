@@ -44,6 +44,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import com.pocketsave.core.currency.LocalCurrencyFormatter
+import com.pocketsave.core.haptics.AppHaptic
+import com.pocketsave.core.haptics.rememberAppHaptics
 import com.pocketsave.core.onboarding.components.PriceField
 import com.pocketsave.core.onboarding.motion.OnboardingScaffold
 import com.pocketsave.core.onboarding.motion.OnboardingSection
@@ -62,6 +64,18 @@ fun OnboardingFirstTripScreen(viewModel: OnboardingViewModel) {
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     val formatter = LocalCurrencyFormatter.current
+    val haptics = rememberAppHaptics()
+
+    // Haptics for the trip step. The Confirm fires once per successful
+    // create; the Reject fires once per distinct validation message the
+    // ViewModel publishes (e.g., "Save your first item before creating a
+    // trip.", "Give your trip a name.").
+    LaunchedEffect(viewModel.tripCelebrationTrigger) {
+        if (viewModel.tripCelebrationTrigger > 0) haptics.perform(AppHaptic.Confirm)
+    }
+    LaunchedEffect(viewModel.tripError) {
+        if (viewModel.tripError != null) haptics.perform(AppHaptic.Reject)
+    }
 
     // Wait for the step transition AND the trip-name section's staggered
     // reveal to compose the field before requesting focus — otherwise the

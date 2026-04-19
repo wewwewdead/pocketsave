@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <cache-path name="shares" path="trip_shares/" />
+    <cache-path name="captures" path="captures/" />
+    <files-path name="item_images" path="item_images/" />
+    <files-path name="cart_backgrounds" path="cart_backgrounds/" />
+</paths>

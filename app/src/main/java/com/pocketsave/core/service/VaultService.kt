@@ -90,6 +90,26 @@ class VaultService(
     private val writeLock = Mutex()
 
     /**
+     * Hard-resets the vault back to first-run state: wipes every Room table and
+     * publishes an empty snapshot. Callers are expected to wipe preferences and
+     * image storage on their own and then decide where to navigate the user
+     * next (usually back through onboarding).
+     *
+     * Runs under both locks so it can't interleave with a load or a write.
+     */
+    suspend fun resetAllData() {
+        loadLock.withLock {
+            writeLock.withLock {
+                // Room's generated `clearAllTables` respects FK constraints
+                // and is the canonical way to hard-wipe the database without
+                // dropping the file itself.
+                db.clearAllTables()
+                _state.value = Snapshot()
+            }
+        }
+    }
+
+    /**
      * Entry-point mirroring `VaultService.loadUserAndVault()` in iOS. Safe to call
      * multiple times; a mutex guarantees that parallel callers don't race to create
      * duplicate users.

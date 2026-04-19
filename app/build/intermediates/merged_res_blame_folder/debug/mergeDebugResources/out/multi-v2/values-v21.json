@@ -1,8 +1,27 @@
 {
     "logs": [
         {
-            "outputFile": "com.pocketsave.app-mergeDebugResources-77:/values-v21/values-v21.xml",
+            "outputFile": "com.pocketsave.app-mergeDebugResources-79:/values-v21/values-v21.xml",
             "map": [
+                {
+                    "source": "C:\\Users\\johnm\\.gradle\\caches\\transforms-4\\160f270ade3a16d1bf06a3063d316735\\transformed\\purchases-8.10.8\\res\\values-v21\\values-v21.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endLines": "7",
+                        "endColumns": "12",
+                        "endOffsets": "409"
+                    },
+                    "to": {
+                        "startLines": "264",
+                        "startColumns": "4",
+                        "startOffsets": "18655",
+                        "endLines": "269",
+                        "endColumns": "12",
+                        "endOffsets": "19009"
+                    }
+                },
                 {
                     "source": "C:\\Users\\johnm\\.gradle\\caches\\transforms-4\\ce98f623399c5c77e257a9126afc67d7\\transformed\\appcompat-1.6.1\\res\\values-v21\\values-v21.xml",
                     "from": {
@@ -33,12 +52,12 @@
                         "endOffsets": "168,232,299,363,479,605,731,859,1031,1383"
                     },
                     "to": {
-                        "startLines": "2,3,4,5,264,265,266,267,268,271",
+                        "startLines": "2,3,4,5,270,271,272,273,274,277",
                         "startColumns": "4,4,4,4,4,4,4,4,4,4",
-                        "startOffsets": "55,173,237,304,18655,18771,18897,19023,19151,19323",
-                        "endLines": "2,3,4,5,264,265,266,267,270,275",
+                        "startOffsets": "55,173,237,304,19014,19130,19256,19382,19510,19682",
+                        "endLines": "2,3,4,5,270,271,272,273,276,281",
                         "endColumns": "117,63,66,63,115,125,125,127,12,12",
-                        "endOffsets": "168,232,299,363,18766,18892,19018,19146,19318,19670"
+                        "endOffsets": "168,232,299,363,19125,19251,19377,19505,19677,20029"
                     }
                 }
             ]

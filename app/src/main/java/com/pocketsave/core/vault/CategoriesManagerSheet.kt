@@ -41,6 +41,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import com.pocketsave.common.util.ColorOption
+import com.pocketsave.core.paywall.ProChip
 import com.pocketsave.core.service.VaultService
 import com.pocketsave.core.vault.icons.AppIcon
 import com.pocketsave.core.vault.picker.ColorSwatchAndHsvPicker
@@ -61,6 +62,20 @@ import kotlinx.coroutines.launch
 fun CategoriesManagerSheet(
     vaultService: VaultService,
     onDismiss: () -> Unit,
+    /**
+     * Invoked when the user taps **New** to create a custom category. The
+     * sheet forwards a callback that actually opens the create form; the
+     * caller either runs it or shows the paywall. Defaults to "always
+     * allow" so the sheet remains previewable without billing wiring.
+     */
+    onAddCategoryRequested: (onAllowed: () -> Unit) -> Unit = { it() },
+    /**
+     * Free-tier custom-category cap. Null means "unlimited" (Pro users) —
+     * in that case no status line or Pro badge is drawn. When non-null, the
+     * sheet renders `N of M custom categories` and a Pro pill on the New
+     * button once the user is at the cap.
+     */
+    customCategoryCap: Int? = null,
 ) {
     val state by vaultService.state.collectAsState()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -79,9 +94,29 @@ fun CategoriesManagerSheet(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            val customCount = custom.size
+            val atCap = customCategoryCap != null && customCount >= customCategoryCap
+
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Manage categories", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                Button(onClick = { showCreateSheet = true }) { Text("New") }
+                Button(onClick = { onAddCategoryRequested { showCreateSheet = true } }) {
+                    Text("New")
+                    if (atCap) {
+                        Spacer(Modifier.width(6.dp))
+                        ProChip()
+                    }
+                }
+            }
+            if (customCategoryCap != null) {
+                // Only surfaces a status line once the free user is actually
+                // at the cap — under the limit the happy path stays silent.
+                if (atCap) {
+                    Text(
+                        text = "$customCount of $customCategoryCap custom categories. Upgrade for unlimited.",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
             LazyColumn(modifier = Modifier.fillMaxWidth()) {

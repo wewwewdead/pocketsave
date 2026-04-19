@@ -38,6 +38,7 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import com.pocketsave.MainActivity
+import com.pocketsave.data.prefs.AppPreferences
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -55,11 +56,22 @@ class PurchasedItemsGlanceWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val snapshot = WidgetSnapshotStore.readSnapshot(context)
-        provideContent { WidgetContent(snapshot) }
+        // The widget provider runs in a separate process so it can't read
+        // `SubscriptionManager.isPro` directly. It falls back to the cached
+        // flag in DataStore, which the manager keeps in sync on every
+        // `CustomerInfo` update. Defaults to `false` on fresh installs —
+        // never surfaces Pro content to a free user.
+        val isPro = runCatching {
+            AppPreferences(context.applicationContext).isProCachedNow()
+        }.getOrDefault(false)
+        provideContent { WidgetContent(snapshot = snapshot, isPro = isPro) }
     }
 
     @Composable
-    private fun WidgetContent(snapshot: PurchasedItemsWidgetSnapshot?) {
+    private fun WidgetContent(
+        snapshot: PurchasedItemsWidgetSnapshot?,
+        isPro: Boolean,
+    ) {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
@@ -68,10 +80,41 @@ class PurchasedItemsGlanceWidget : GlanceAppWidget() {
                 .clickable(actionStartActivity<MainActivity>()),
         ) {
             when {
+                !isPro -> ProUpsellState()
                 snapshot == null || snapshot.cart == null -> EmptyState()
                 snapshot.cart.items.isEmpty() -> EmptyCartState(cartName = snapshot.cart.name)
                 else -> CartContent(snapshot.cart)
             }
+        }
+    }
+
+    /**
+     * Free-tier widget state. Tapping opens the app; the user can then reach
+     * the paywall via More → PocketSave Pro. Copy stays short so the widget
+     * still feels like part of the product, not an ad.
+     */
+    @Composable
+    private fun ProUpsellState() {
+        Column(
+            modifier = GlanceModifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "PocketSave Pro",
+                style = TextStyle(
+                    color = ColorProvider(day = Color(0xFF1F1B1D), night = Color(0xFF1F1B1D)),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                ),
+            )
+            Text(
+                text = "Upgrade to see your cart here.",
+                style = TextStyle(
+                    color = ColorProvider(day = Color(0x991F1B1D), night = Color(0x991F1B1D)),
+                    fontSize = 11.sp,
+                ),
+            )
         }
     }
 

@@ -18,8 +18,11 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
  * monetization-free port: onboarding completion, user name, currency selection,
  * and the custom-units catalog.
  *
- * Paywall-related keys (hasShownPostUpdatePaywall, isPro, upgrade reminder state,
- * etc.) are intentionally omitted.
+ * The [isProCached] key is the one monetization-adjacent field that does live
+ * here — it is **not** the source of truth (RevenueCat is) but a local mirror
+ * of the last-known entitlement so the first frame on cold launch can make
+ * a correct free-vs-Pro decision without waiting for the SDK. See
+ * `billing/RevenueCatSubscriptionManager` for the write path.
  */
 class AppPreferences(private val context: Context) {
 
@@ -31,6 +34,7 @@ class AppPreferences(private val context: Context) {
         val CUSTOM_UNITS_JSON = stringPreferencesKey("custom_units_json")
         val VISIBLE_CATEGORIES_JSON = stringPreferencesKey("visible_categories_json")
         val SHOULD_SHOW_FIRST_RUN_HINTS = booleanPreferencesKey("should_show_first_run_hints")
+        val IS_PRO_CACHED = booleanPreferencesKey("is_pro_cached")
     }
 
     val hasCompletedOnboarding: Flow<Boolean> =
@@ -59,8 +63,23 @@ class AppPreferences(private val context: Context) {
     val shouldShowFirstRunHints: Flow<Boolean> =
         context.dataStore.data.map { it[Keys.SHOULD_SHOW_FIRST_RUN_HINTS] ?: false }
 
+    /**
+     * Last-known Pro entitlement verdict, mirrored from RevenueCat's
+     * `CustomerInfo`. Used only as a first-frame hint on cold launch — the
+     * live verdict always comes from `SubscriptionManager.isPro`. Defaults
+     * to `false` so first-time users never start in a Pro-assumed state.
+     */
+    val isProCached: Flow<Boolean> =
+        context.dataStore.data.map { it[Keys.IS_PRO_CACHED] ?: false }
+
     suspend fun hasCompletedOnboardingNow(): Boolean =
         hasCompletedOnboarding.first()
+
+    suspend fun isProCachedNow(): Boolean = isProCached.first()
+
+    suspend fun setIsProCached(value: Boolean) {
+        context.dataStore.edit { it[Keys.IS_PRO_CACHED] = value }
+    }
 
     suspend fun setHasCompletedOnboarding(value: Boolean) {
         context.dataStore.edit { it[Keys.HAS_COMPLETED_ONBOARDING] = value }
@@ -89,5 +108,15 @@ class AppPreferences(private val context: Context) {
 
     suspend fun setShouldShowFirstRunHints(value: Boolean) {
         context.dataStore.edit { it[Keys.SHOULD_SHOW_FIRST_RUN_HINTS] = value }
+    }
+
+    /**
+     * Wipes every stored preference. Used by the Reset-App flow in settings so
+     * the next launch routes through onboarding and all persisted choices
+     * (name, currency, visible categories, custom units, first-run hints) go
+     * back to defaults.
+     */
+    suspend fun clearAll() {
+        context.dataStore.edit { it.clear() }
     }
 }

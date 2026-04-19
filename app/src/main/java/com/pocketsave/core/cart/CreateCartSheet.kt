@@ -25,6 +25,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.pocketsave.core.haptics.AppHaptic
+import com.pocketsave.core.haptics.rememberAppHaptics
 import com.pocketsave.core.service.VaultService
 import kotlinx.coroutines.launch
 
@@ -46,6 +48,7 @@ fun CreateCartSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
+    val haptics = rememberAppHaptics()
     var name by remember { mutableStateOf("") }
     var budgetText by remember { mutableStateOf("") }
     var nameError by remember { mutableStateOf<String?>(null) }
@@ -101,6 +104,8 @@ fun CreateCartSheet(
                     onClick = {
                         if (trimmedName.isEmpty()) {
                             nameError = "Cart name is required"
+                            // Subtle rebuff on blocked submit.
+                            haptics.perform(AppHaptic.Reject)
                             return@Button
                         }
                         scope.launch {
@@ -112,8 +117,13 @@ fun CreateCartSheet(
                             )
                             isSubmitting = false
                             if (cart != null) {
+                                // New trip actually exists now — one
+                                // Confirm buzz as the sheet dismisses.
+                                haptics.perform(AppHaptic.Confirm)
                                 selectionStore.clearAll()
                                 onCreated(cart.id)
+                            } else {
+                                haptics.perform(AppHaptic.Reject)
                             }
                         }
                     },
