@@ -7,14 +7,20 @@ import java.util.Calendar
 import java.util.Date
 
 /**
- * Sums spend across every cart whose `createdAt` falls in the calendar month
- * containing [now]. Per-cart spend is delegated to [computeSpent] so this
- * stays pure (no [com.pocketsave.core.service.VaultService] dependency) and
- * the inline composable callers can pass `vaultService::computeTotalSpent`
- * directly. Tests can stub the lambda with a fixed value table.
+ * Sums spend across every cart that belongs to the calendar month containing
+ * [now]. A completed cart is bucketed by `completedAt` (when the money
+ * actually left the wallet) so a cart reopened in a later month and
+ * re-completed shows up in the month it was re-completed — not the month it
+ * was originally created. Carts still in planning/shopping stay bucketed by
+ * `createdAt` so the pill keeps climbing as the user shops.
+ *
+ * Per-cart spend is delegated to [computeSpent] so this stays pure (no
+ * [com.pocketsave.core.service.VaultService] dependency) and the inline
+ * composable callers can pass `vaultService::computeTotalSpent` directly.
+ * Tests can stub the lambda with a fixed value table.
  *
  * Month boundary uses the device's default [java.util.TimeZone] — same as
- * the inline call sites used to do — so a cart created at 11:59 PM local
+ * the inline call sites used to do — so a cart completed at 11:59 PM local
  * time on Jan 31 stays in January even if UTC has already rolled over.
  */
 fun monthlySpendIn(
@@ -28,11 +34,17 @@ fun monthlySpendIn(
     val nowMonth = cal.get(Calendar.MONTH)
     var total = 0.0
     for (cart in carts) {
-        cal.time = cart.createdAt
+        val status = CartStatus.fromRaw(cart.status)
+        val bucketDate = if (status == CartStatus.COMPLETED) {
+            cart.completedAt ?: cart.createdAt
+        } else {
+            cart.createdAt
+        }
+        cal.time = bucketDate
         if (cal.get(Calendar.YEAR) != nowYear) continue
         if (cal.get(Calendar.MONTH) != nowMonth) continue
         val items = itemsByCart[cart.id].orEmpty()
-        total += computeSpent(CartStatus.fromRaw(cart.status), items)
+        total += computeSpent(status, items)
     }
     return total
 }

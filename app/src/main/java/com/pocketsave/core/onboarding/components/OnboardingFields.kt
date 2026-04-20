@@ -10,7 +10,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -26,7 +25,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.pocketsave.core.vault.icons.AppIcon
+import com.pocketsave.core.vault.icons.CategoryEmoji
 import com.pocketsave.domain.model.GroceryCategory
 import com.pocketsave.domain.semantics.UnitMenuCatalog
 import com.pocketsave.domain.semantics.UnitMenuOption
@@ -111,6 +110,8 @@ fun CategoryPicker(
     modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val selectedCategory = selected?.let { GroceryCategory.fromTitle(it) }
+        ?.takeIf { it.title == selected }
 
     ExposedDropdownMenuBox(
         expanded = expanded,
@@ -123,6 +124,14 @@ fun CategoryPicker(
             readOnly = true,
             label = { Text("Category") },
             placeholder = { Text("Select a category") },
+            leadingIcon = selectedCategory?.let { category ->
+                {
+                    Text(
+                        text = CategoryEmoji.resolve(category.defaultIconKey),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                }
+            },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .fillMaxWidth()
@@ -136,9 +145,9 @@ fun CategoryPicker(
                 DropdownMenuItem(
                     text = { Text(category.title) },
                     leadingIcon = {
-                        Icon(
-                            imageVector = AppIcon.resolveIcon(category.defaultIconKey),
-                            contentDescription = null,
+                        Text(
+                            text = CategoryEmoji.resolve(category.defaultIconKey),
+                            style = MaterialTheme.typography.titleMedium,
                         )
                     },
                     onClick = {

@@ -53,6 +53,7 @@ fun OnboardingContainer(
                 OnboardingStep.WELCOME -> OnboardingWelcomeScreen(viewModel)
                 OnboardingStep.VALUE -> OnboardingValueScreen(viewModel)
                 OnboardingStep.CURRENCY -> OnboardingCurrencyScreen(viewModel)
+                OnboardingStep.MONTHLY_BUDGET -> OnboardingMonthlyBudgetScreen(viewModel)
                 OnboardingStep.STORE -> OnboardingLastStoreScreen(viewModel)
                 OnboardingStep.ITEM -> OnboardingFirstItemScreen(viewModel)
                 OnboardingStep.TRIP -> OnboardingFirstTripScreen(viewModel)

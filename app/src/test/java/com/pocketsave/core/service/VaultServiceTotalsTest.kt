@@ -93,7 +93,9 @@ class VaultServiceTotalsTest {
     }
 
     @Test
-    fun `shopping total respects wasEdited without fulfilment`() {
+    fun `shopping total ignores edited rows that were never checked off`() {
+        // Price edits without a fulfilment tick are a plan change, not a
+        // purchase — the row shouldn't contribute to the running total.
         val items = listOf(
             vaultItem(
                 plannedPrice = 5.0,
@@ -103,14 +105,25 @@ class VaultServiceTotalsTest {
                 wasEdited = true,
             ),
         )
-        assertEquals(6.5 * 2.0, service.computeTotalSpent(CartStatus.SHOPPING, items), 1e-9)
+        assertEquals(0.0, service.computeTotalSpent(CartStatus.SHOPPING, items), 1e-9)
     }
 
     @Test
-    fun `shopping total uses plannedPrice when unfulfilled and not edited`() {
+    fun `shopping total excludes unfulfilled rows entirely`() {
         val items = listOf(vaultItem(plannedPrice = 5.0, quantity = 2.0, actualPrice = 9.0))
-        // Actual price is ignored because the row isn't fulfilled AND wasEdited is false.
-        assertEquals(5.0 * 2.0, service.computeTotalSpent(CartStatus.SHOPPING, items), 1e-9)
+        // Row isn't fulfilled, skipped, or edited — user simply hasn't bought
+        // it yet, so it contributes nothing to the running total.
+        assertEquals(0.0, service.computeTotalSpent(CartStatus.SHOPPING, items), 1e-9)
+    }
+
+    @Test
+    fun `shopping total sums only fulfilled rows when some are unchecked`() {
+        val items = listOf(
+            vaultItem(plannedPrice = 5.0, quantity = 1.0, isFulfilled = true, actualPrice = 6.0),
+            vaultItem(uid = "row-2", itemId = "item-2", plannedPrice = 10.0, quantity = 2.0),
+        )
+        // First row fulfilled (counts at actual 6.0 × 1.0), second untouched.
+        assertEquals(6.0, service.computeTotalSpent(CartStatus.SHOPPING, items), 1e-9)
     }
 
     @Test
@@ -140,5 +153,31 @@ class VaultServiceTotalsTest {
             vaultItem(plannedPrice = 3.0, quantity = 4.0, isFulfilled = true),
         )
         assertEquals(3.0 * 4.0, service.computeTotalSpent(CartStatus.COMPLETED, items), 1e-9)
+    }
+
+    @Test
+    fun `completed total excludes rows the user never checked off`() {
+        // Unfulfilled rows carry their planned data into history for display
+        // but don't contribute to the finished-trip total — otherwise items
+        // the user decided not to buy would still inflate the spent number.
+        val items = listOf(
+            vaultItem(
+                plannedPrice = 5.0,
+                quantity = 1.0,
+                actualPrice = 6.25,
+                actualQuantity = 2.0,
+                isFulfilled = true,
+            ),
+            vaultItem(
+                uid = "row-unchecked",
+                itemId = "item-2",
+                plannedPrice = 10.0,
+                quantity = 3.0,
+                actualPrice = 10.0,
+                actualQuantity = 3.0,
+                isFulfilled = false,
+            ),
+        )
+        assertEquals(6.25 * 2.0, service.computeTotalSpent(CartStatus.COMPLETED, items), 1e-9)
     }
 }

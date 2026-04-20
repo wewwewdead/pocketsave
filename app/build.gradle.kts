@@ -49,7 +49,7 @@ android {
         applicationId = "com.pocketsave"
         minSdk = 26
         targetSdk = 35
-        versionCode = 9
+        versionCode = 10
         versionName = "0.1.2"
         vectorDrawables { useSupportLibrary = true }
 
@@ -148,6 +148,19 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:1.3.4")
     implementation("androidx.camera:camera-view:1.3.4")
     implementation("com.google.mlkit:text-recognition:16.0.0")
+    // Subject Segmentation — Android's counterpart to iOS Vision's
+    // `VNGenerateForegroundInstanceMaskRequest`. Returns a pre-composited
+    // foreground bitmap with alpha, which we turn into a Buldak-style
+    // sticker via edge feathering + white outline. Still in beta; first
+    // call downloads the model (<10 MB) asynchronously.
+    //
+    // Ships only as Play Services-unbundled (`com.google.android.gms:
+    // play-services-mlkit-*`), NOT the standalone `com.google.mlkit:*`
+    // group that Text Recognition uses. The public API namespace
+    // (`com.google.mlkit.vision.segmentation.subject.*`) is shared across
+    // both distribution paths, so the Kotlin imports don't care which
+    // artifact supplies the classes.
+    implementation("com.google.android.gms:play-services-mlkit-subject-segmentation:16.0.0-beta1")
     implementation("com.google.guava:guava:33.2.1-android")
 
     // Glance home-screen widget.

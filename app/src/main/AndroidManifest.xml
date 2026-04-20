@@ -55,6 +55,15 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <!-- Tells Play Services to pre-download the Subject Segmentation
+             model alongside app install, so the first "Lift subject" on a
+             captured item doesn't hang while the model fetches. Without this
+             hint the first call fails with a NOT_DOWNLOADED error and the
+             download only kicks off in the background. -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="subject_segment" />
+
         <receiver
             android:name=".core.widget.PurchasedItemsWidgetReceiver"
             android:exported="true"

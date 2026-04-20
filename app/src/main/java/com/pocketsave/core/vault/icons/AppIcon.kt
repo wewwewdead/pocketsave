@@ -3,7 +3,6 @@ package com.pocketsave.core.vault.icons
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AcUnit
 import androidx.compose.material.icons.filled.BakeryDining
-import androidx.compose.material.icons.filled.Blender
 import androidx.compose.material.icons.filled.Cake
 import androidx.compose.material.icons.filled.ChildCare
 import androidx.compose.material.icons.filled.CleaningServices
@@ -12,7 +11,7 @@ import androidx.compose.material.icons.filled.Cookie
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.DinnerDining
 import androidx.compose.material.icons.filled.Eco
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.EggAlt
 import androidx.compose.material.icons.filled.EmojiFoodBeverage
 import androidx.compose.material.icons.filled.Fastfood
@@ -22,8 +21,8 @@ import androidx.compose.material.icons.filled.Icecream
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.Liquor
-import androidx.compose.material.icons.filled.LocalBar
 import androidx.compose.material.icons.filled.LocalCafe
+import androidx.compose.material.icons.filled.LocalDrink
 import androidx.compose.material.icons.filled.LocalPharmacy
 import androidx.compose.material.icons.filled.LocalPizza
 import androidx.compose.material.icons.filled.LunchDining
@@ -33,6 +32,7 @@ import androidx.compose.material.icons.filled.RiceBowl
 import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.SetMeal
 import androidx.compose.material.icons.filled.ShoppingBasket
+import androidx.compose.material.icons.filled.SoupKitchen
 import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material.icons.filled.WineBar
 import androidx.compose.material.icons.filled.Yard
@@ -67,10 +67,10 @@ object AppIcon {
         "meats_seafood" to Icons.Filled.SetMeal,
         "dairy_eggs" to Icons.Filled.EggAlt,
         "frozen" to Icons.Filled.AcUnit,
-        "condiments_ingredients" to Icons.Filled.Blender,
+        "condiments_ingredients" to Icons.Filled.SoupKitchen,
         "pantry" to Icons.Filled.Inventory2,
         "bakery_bread" to Icons.Filled.BakeryDining,
-        "beverages" to Icons.Filled.LocalBar,
+        "beverages" to Icons.Filled.LocalDrink,
         "ready_meals" to Icons.Filled.DinnerDining,
         "personal_care" to Icons.Filled.Spa,
         "health" to Icons.Filled.LocalPharmacy,
@@ -79,7 +79,7 @@ object AppIcon {
         "baby" to Icons.Filled.ChildCare,
         "home_garden" to Icons.Filled.Yard,
         "electronics_hobbies" to Icons.Filled.Devices,
-        "stationery" to Icons.Filled.Edit,
+        "stationery" to Icons.Filled.EditNote,
 
         // Extras offered in the picker grid for custom categories
         "cake" to Icons.Filled.Cake,

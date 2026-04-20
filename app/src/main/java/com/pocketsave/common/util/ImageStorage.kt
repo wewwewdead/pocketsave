@@ -52,6 +52,43 @@ class ImageStorage(private val context: Context) {
         }
 
     /**
+     * Decodes [source], lifts the foreground subject via ML Kit Subject
+     * Segmentation, and persists the sticker (transparent background +
+     * feathered edge + white halo outline) as a PNG. Falls back to the plain
+     * JPEG path from [saveFromUri] if segmentation fails or the device can't
+     * reach Play Services to download the model — callers never have to
+     * juggle "sticker or original," they just get the best available image.
+     *
+     * Pipeline matches the iOS `SubjectMaskProcessor.preparePreviewAssets`
+     * sequence: decode → EXIF rotate → downsample → segment → crop to
+     * subject bounds → feather → outline → PNG. JPEG's 4:2:0 chroma would
+     * band the sticker's halo so we switch to PNG for this path only.
+     */
+    suspend fun saveSubjectSticker(
+        source: Uri,
+        maxDimension: Int = DEFAULT_MAX_DIMENSION,
+    ): String? = withContext(Dispatchers.IO) {
+        runCatching {
+            val resolver: ContentResolver = context.contentResolver
+            val bitmap = decodeDownsampled(resolver, source, maxDimension)
+                ?: return@runCatching null
+            val sticker = SubjectSegmenter.extract(bitmap)
+            if (sticker == null) {
+                // Fallback to JPEG save of the plain decoded bitmap so the
+                // user still gets *something* when segmentation isn't
+                // available (model not downloaded yet, flat image, etc.).
+                val uri = writeBitmap(bitmap)
+                bitmap.recycle()
+                return@runCatching uri
+            }
+            bitmap.recycle()
+            val uri = writeBitmapPng(sticker)
+            sticker.recycle()
+            uri
+        }.getOrNull()
+    }
+
+    /**
      * Allocates a fresh capture target in app-private cache storage and returns
      * both the file (for later deletion) and a content:// Uri exposed via the
      * app's FileProvider so [ActivityResultContracts.TakePicture] can hand the
@@ -93,6 +130,16 @@ class ImageStorage(private val context: Context) {
         val file = File(rootDir, "${UUID.randomUUID()}.jpg")
         FileOutputStream(file).use { out ->
             bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, out)
+        }
+        return Uri.fromFile(file).toString()
+    }
+
+    // PNG path — preserves alpha, needed for subject-segmented stickers. We
+    // don't pass a quality value because PNG is lossless; the arg is ignored.
+    private fun writeBitmapPng(bitmap: Bitmap): String {
+        val file = File(rootDir, "${UUID.randomUUID()}.png")
+        FileOutputStream(file).use { out ->
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
         }
         return Uri.fromFile(file).toString()
     }

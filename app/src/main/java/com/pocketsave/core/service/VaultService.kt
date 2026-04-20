@@ -1226,20 +1226,24 @@ class VaultService(
     }
 
     private fun resolveShoppingPriceAndQty(item: CartItemEntity): Pair<Double, Double>? {
+        // Only items the user actually checked off contribute to the running
+        // total. Skipped items, and unchecked items the user simply hasn't
+        // bought yet, don't count — the pill should only climb as rows get
+        // fulfilled. `wasEditedDuringShopping` on its own isn't enough: price
+        // edits without a check-off are a plan change, not a purchase.
         if (item.isSkippedDuringShopping) return null
-        val price = if (item.isFulfilled || item.wasEditedDuringShopping) {
-            item.actualPrice ?: item.plannedPrice ?: 0.0
-        } else {
-            item.plannedPrice ?: 0.0
-        }
-        val qty = if (item.isFulfilled || item.wasEditedDuringShopping) {
-            item.actualQuantity ?: item.quantity
-        } else item.quantity
+        if (!item.isFulfilled) return null
+        val price = item.actualPrice ?: item.plannedPrice ?: 0.0
+        val qty = item.actualQuantity ?: item.quantity
         return price to qty
     }
 
     private fun resolveCompletedPriceAndQty(item: CartItemEntity): Pair<Double, Double>? {
+        // Mirrors the shopping rule: a finished trip only records what the
+        // user actually checked off. Unchecked rows travel with the cart into
+        // history for reference but don't add to the spent total.
         if (item.isSkippedDuringShopping) return null
+        if (!item.isFulfilled) return null
         val price = item.actualPrice ?: item.plannedPrice ?: 0.0
         val qty = item.actualQuantity ?: item.quantity
         return price to qty
@@ -1438,20 +1442,44 @@ class VaultService(
     }
 
     /**
-     * Port of `reopenCart(cart:)`. Clears actuals + unfulfilled everything so
-     * the user can re-confirm values at the current vault prices. Paywall
-     * active-cart-limit check is intentionally omitted.
+     * Reopens a completed trip by cloning it into a fresh SHOPPING cart with a
+     * new id. The original completed cart is left untouched so the finished
+     * trip stays in history with its original totals and `completedAt` intact.
+     * The clone starts in SHOPPING with actuals cleared, so the user can
+     * re-confirm values at the current vault prices; when they finish, it
+     * lands as a separate, new finished trip in history and its spend counts
+     * in the month it's completed. Returns the new cart's id, or `null` if
+     * the source cart isn't completed. Paywall active-cart-limit check is
+     * intentionally omitted.
      */
-    suspend fun reopenCart(cartId: String): Boolean {
-        val result = writeLock.withLock {
+    suspend fun reopenCart(cartId: String): String? {
+        val newCartId = writeLock.withLock {
             db.withTransaction {
-                val cart = db.cartDao().findById(cartId) ?: return@withTransaction false
-                if (CartStatus.fromRaw(cart.status) != CartStatus.COMPLETED) return@withTransaction false
+                val source = db.cartDao().findById(cartId) ?: return@withTransaction null
+                if (CartStatus.fromRaw(source.status) != CartStatus.COMPLETED) return@withTransaction null
 
-                val items = db.cartItemDao().listByCart(cartId)
-                for (item in items) {
-                    db.cartItemDao().update(
+                val now = Date()
+                val newId = UUID.randomUUID().toString()
+                db.cartDao().insert(
+                    source.copy(
+                        id = newId,
+                        status = CartStatus.SHOPPING.raw,
+                        fulfillmentStatus = 0.0,
+                        createdAt = now,
+                        updatedAt = now,
+                        startedAt = now,
+                        completedAt = null,
+                        isDeleted = false,
+                        deletedAt = null,
+                    ),
+                )
+
+                val sourceItems = db.cartItemDao().listByCart(cartId)
+                for (item in sourceItems) {
+                    db.cartItemDao().insert(
                         item.copy(
+                            uid = UUID.randomUUID().toString(),
+                            cartId = newId,
                             actualPrice = null,
                             actualQuantity = null,
                             actualUnit = null,
@@ -1460,21 +1488,13 @@ class VaultService(
                         ),
                     )
                 }
-                db.cartDao().update(
-                    cart.copy(
-                        status = CartStatus.SHOPPING.raw,
-                        completedAt = null,
-                        updatedAt = Date(),
-                        isDeleted = false,
-                        deletedAt = null,
-                    ),
-                )
-                recomputeCartTotalsInternal(cartId)
-                true
+
+                recomputeCartTotalsInternal(newId)
+                newId
             }
         }
-        if (result) refreshCart(cartId)
-        return result
+        if (newCartId != null) publishSnapshotRefresh()
+        return newCartId
     }
 
     /** Port of `toggleItemFulfillment(cart:itemId:)`. */

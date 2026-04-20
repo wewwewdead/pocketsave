@@ -216,13 +216,25 @@ private fun ShoppingOnlyForm(
     var quantity by remember { mutableStateOf("1") }
     var category by remember { mutableStateOf<String?>(null) }
     var imageUri by remember { mutableStateOf<String?>(null) }
+    // Tracks the subject-segmentation pass so the chooser can show a
+    // lightweight "lifting the subject…" hint while ML Kit works. The first
+    // run kicks off the one-time model download, which can take a few
+    // seconds on slow networks — silently pretending it's instant would look
+    // like the pick just hung.
+    var isProcessingImage by remember { mutableStateOf(false) }
 
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
     ) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
-            val stored = imageStorage.saveFromUri(uri)
+            isProcessingImage = true
+            // Subject-segmented path: transparent-background sticker with a
+            // white halo, matching the iOS visual language. Falls back to a
+            // plain JPEG internally if segmentation isn't available, so the
+            // UI just has one code path.
+            val stored = imageStorage.saveSubjectSticker(uri)
+            isProcessingImage = false
             if (stored != null) {
                 val previous = imageUri
                 imageUri = stored
@@ -242,6 +254,7 @@ private fun ShoppingOnlyForm(
     ) {
         ImageChooser(
             uri = imageUri,
+            isProcessing = isProcessingImage,
             onPick = { pickImageLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
             onClear = {
                 val previous = imageUri
@@ -306,31 +319,49 @@ private fun ShoppingOnlyForm(
 }
 
 @Composable
-private fun ImageChooser(uri: String?, onPick: () -> Unit, onClear: () -> Unit) {
+private fun ImageChooser(
+    uri: String?,
+    isProcessing: Boolean = false,
+    onPick: () -> Unit,
+    onClear: () -> Unit,
+) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
                 .size(64.dp)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.surfaceVariant)
-                .clickable(onClick = onPick),
+                .clickable(enabled = !isProcessing, onClick = onPick),
             contentAlignment = Alignment.Center,
         ) {
-            if (uri != null) {
-                AsyncImage(
+            when {
+                isProcessing -> androidx.compose.material3.CircularProgressIndicator(
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(22.dp),
+                )
+                uri != null -> AsyncImage(
                     model = uri,
                     contentDescription = null,
-                    contentScale = ContentScale.Crop,
+                    contentScale = ContentScale.Fit,
                     modifier = Modifier.fillMaxSize(),
                 )
-            } else {
-                Icon(Icons.Default.CameraAlt, contentDescription = "Add photo")
+                else -> Icon(Icons.Default.CameraAlt, contentDescription = "Add photo")
             }
         }
         Spacer(Modifier.width(12.dp))
         Column {
-            TextButton(onClick = onPick) { Text(if (uri == null) "Add photo" else "Replace photo") }
-            if (uri != null) TextButton(onClick = onClear) { Text("Remove photo") }
+            TextButton(onClick = onPick, enabled = !isProcessing) {
+                Text(
+                    when {
+                        isProcessing -> "Lifting subject…"
+                        uri == null -> "Add photo"
+                        else -> "Replace photo"
+                    },
+                )
+            }
+            if (uri != null && !isProcessing) {
+                TextButton(onClick = onClear) { Text("Remove photo") }
+            }
         }
     }
 }

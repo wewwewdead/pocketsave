@@ -197,16 +197,19 @@ fun ItemFormSheet(
             }
     }
 
-    // Shared pipeline for a picked or captured Uri. Runs `saveFromUri` on
-    // Dispatchers.IO (inside ImageStorage), swaps out any previous temp image,
-    // surfaces an inline error on failure, and deletes the camera-capture temp
-    // file afterwards if one was supplied.
+    // Shared pipeline for a picked or captured Uri. Runs the subject-segmented
+    // sticker save on Dispatchers.IO (inside ImageStorage) — lifts the
+    // foreground, feathers edges, stamps the white outline, and writes PNG.
+    // Falls back to a plain JPEG internally if ML Kit's model isn't available
+    // yet, so one path covers every device. Swaps out any previous temp
+    // image, surfaces an inline error on failure, and deletes the
+    // camera-capture temp file afterwards if one was supplied.
     fun processPickedImage(source: Uri, captureFile: java.io.File? = null) {
         scope.launch {
             isProcessingImage = true
             imageError = null
             try {
-                val stored = imageStorage.saveFromUri(source)
+                val stored = imageStorage.saveSubjectSticker(source)
                 if (stored != null) {
                     val previous = formVm.selectedImageUri
                     formVm.selectedImageUri = stored

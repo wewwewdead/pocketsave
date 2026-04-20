@@ -110,6 +110,7 @@ fun CartDetailScreen(
     onOpenPaywall: (PremiumFeature) -> Unit,
     onCompleteTripDone: () -> Unit = {},
     onShareTrip: (String) -> Unit = {},
+    onOpenCart: (String) -> Unit = {},
     pendingDeepLink: com.pocketsave.app.PendingDeepLink? = null,
     onDeepLinkConsumed: () -> Unit = {},
 ) {
@@ -129,7 +130,6 @@ fun CartDetailScreen(
     var showManageSheet by remember { mutableStateOf(false) }
     var showShoppingOnlySheet by remember { mutableStateOf(false) }
     var showFinishSheet by remember { mutableStateOf(false) }
-    var showCompletionSummary by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showReturnToPlanningConfirm by remember { mutableStateOf(false) }
     var showBackgroundPicker by remember { mutableStateOf(false) }
@@ -236,7 +236,10 @@ fun CartDetailScreen(
                         if (ui.status == CartStatus.COMPLETED) {
                             DropdownMenuItem(
                                 text = { Text("Reopen cart") },
-                                onClick = { showOverflow = false; viewModel.reopenCart() },
+                                onClick = {
+                                    showOverflow = false
+                                    viewModel.reopenCart(onOpenCart)
+                                },
                             )
                         }
                         DropdownMenuItem(
@@ -276,7 +279,7 @@ fun CartDetailScreen(
                 onFinishTrip = { showFinishSheet = true },
                 onReopenCart = {
                     haptics.perform(AppHaptic.Confirm)
-                    viewModel.reopenCart()
+                    viewModel.reopenCart(onOpenCart)
                 },
             )
         },
@@ -418,24 +421,24 @@ fun CartDetailScreen(
         )
     }
 
-    if (showFinishSheet && ui.status == CartStatus.SHOPPING) {
+    if (showFinishSheet) {
+        // Intentionally NOT guarded on `ui.status == SHOPPING`: the moment
+        // `completeShoppingNow()` flips the cart to COMPLETED, the snapshot
+        // re-emits and `ui.status` changes. If this guard removed the sheet
+        // mid-completion, its `rememberCoroutineScope` would be cancelled
+        // and the post-delay `onConfirm()` (which fires the navigation)
+        // would never run — the user would be stuck on the detail screen.
+        // The sheet only appears in response to the SHOPPING-only "Finish
+        // trip" button, so a status guard here is redundant anyway.
         FinishTripSheet(
             viewModel = viewModel,
             onDismiss = { showFinishSheet = false },
             onConfirm = {
-                // The actual trip-completion moment — one Confirm so the
-                // user feels the milestone as the success sheet appears.
+                // One Confirm haptic on the milestone, then drop straight
+                // to Home via the wrap-up-return transition. The sheet's
+                // own CelebrationBurst + that transition carry the moment.
                 haptics.perform(AppHaptic.Confirm)
                 showFinishSheet = false
-                showCompletionSummary = true
-            },
-        )
-    }
-
-    if (showCompletionSummary) {
-        TripCompletedSheet(
-            onDismiss = {
-                showCompletionSummary = false
                 onCompleteTripDone()
             },
         )
@@ -1079,67 +1082,6 @@ private fun BottomActionBar(
                     Text("Reopen cart")
                 }
             }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TripCompletedSheet(
-    onDismiss: () -> Unit,
-) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(28.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 22.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.padding(14.dp).size(30.dp),
-                        )
-                    }
-                    Text(
-                        text = "Shopping complete",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                    Text(
-                        text = "You're all set. This trip is finished and saved.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.82f),
-                    )
-                }
-            }
-
-            Button(
-                onClick = onDismiss,
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text("Done") }
         }
     }
 }

@@ -114,6 +114,26 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.isTabSwitch(): Boo
     return from in BOTTOM_NAV_ROUTES && to in BOTTOM_NAV_ROUTES
 }
 
+/**
+ * The single "you just wrapped up a trip" nav — cart-detail → home. Detected
+ * by route because the wrap-up button fires `navController.navigate(HOME)`
+ * (forward nav, not pop) so the standard detail-pop slide would land the user
+ * back at the history/active list instead. We want a softer, more cinematic
+ * beat to mark the completion; this predicate lets [enterSpec]/[exitSpec]
+ * branch once without disturbing every other navigation.
+ */
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.isWrapUpReturn(): Boolean {
+    val from = initialState.destination.route
+    val to = targetState.destination.route
+    return from == Routes.CART_DETAIL && to == Routes.HOME
+}
+
+// Wrap-up uses a slightly longer dwell than page pushes — the fade carries
+// the emotional weight of "trip is finished", and clipping it short makes
+// the screen jump. 460ms sits long enough to breathe, short enough to not
+// feel sluggish on 120Hz panels.
+private const val WrapUpMs = 460
+
 // Page slides use a damped tween, not a bouncy spring. Bouncy springs on a
 // full-screen slide overshoot past the resting position, which reads as
 // "off-positioned then settles" — wrong for page navigation. Bounce stays
@@ -123,35 +143,61 @@ private const val PagePopMs = 280
 private const val TabFadeMs = 220
 
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.enterSpec(): EnterTransition {
-    return if (isTabSwitch()) {
-        // Lateral feel: soft cross-fade + a whisper of scale.
-        fadeIn(animationSpec = tween(TabFadeMs)) +
-            scaleIn(
-                initialScale = 0.98f,
-                animationSpec = tween(TabFadeMs, easing = LinearOutSlowInEasing),
-            )
-    } else {
-        // Deeper push: slide in from fully offscreen right using a damped
-        // tween. No initialOffset override — defaults to { full } so the
-        // page starts *entirely* off-screen and arrives cleanly at rest.
-        slideIntoContainer(
-            towards = AnimatedContentTransitionScope.SlideDirection.Start,
-            animationSpec = tween(PagePushMs, easing = FastOutSlowInEasing),
-        ) + fadeIn(animationSpec = tween(PagePushMs / 2))
+    return when {
+        isWrapUpReturn() -> {
+            // Home "resolves into view" — a very subtle scale-down to rest
+            // (1.03 → 1.0) paired with a full fade-in. Reads like a camera
+            // refocusing on the app after the celebration.
+            fadeIn(animationSpec = tween(WrapUpMs, easing = FastOutSlowInEasing)) +
+                scaleIn(
+                    initialScale = 1.03f,
+                    animationSpec = tween(WrapUpMs, easing = FastOutSlowInEasing),
+                )
+        }
+        isTabSwitch() -> {
+            // Lateral feel: soft cross-fade + a whisper of scale.
+            fadeIn(animationSpec = tween(TabFadeMs)) +
+                scaleIn(
+                    initialScale = 0.98f,
+                    animationSpec = tween(TabFadeMs, easing = LinearOutSlowInEasing),
+                )
+        }
+        else -> {
+            // Deeper push: slide in from fully offscreen right using a damped
+            // tween. No initialOffset override — defaults to { full } so the
+            // page starts *entirely* off-screen and arrives cleanly at rest.
+            slideIntoContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                animationSpec = tween(PagePushMs, easing = FastOutSlowInEasing),
+            ) + fadeIn(animationSpec = tween(PagePushMs / 2))
+        }
     }
 }
 
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.exitSpec(): ExitTransition {
-    return if (isTabSwitch()) {
-        fadeOut(animationSpec = tween(TabFadeMs - 60)) +
-            scaleOut(
-                targetScale = 1.02f,
-                animationSpec = tween(TabFadeMs, easing = LinearOutSlowInEasing),
-            )
-    } else {
-        // Outgoing page sits still under the incoming slide, just fades
-        // slightly — no scale or slide so the layered motion stays calm.
-        fadeOut(animationSpec = tween(PagePushMs / 2))
+    return when {
+        isWrapUpReturn() -> {
+            // Cart detail "recedes" — scale down to 0.97 + fade. The shrink
+            // is slight on purpose; any more and it reads as a gimmick. This
+            // is a graceful put-away, not a zoom-out.
+            fadeOut(animationSpec = tween(WrapUpMs, easing = FastOutSlowInEasing)) +
+                scaleOut(
+                    targetScale = 0.97f,
+                    animationSpec = tween(WrapUpMs, easing = FastOutSlowInEasing),
+                )
+        }
+        isTabSwitch() -> {
+            fadeOut(animationSpec = tween(TabFadeMs - 60)) +
+                scaleOut(
+                    targetScale = 1.02f,
+                    animationSpec = tween(TabFadeMs, easing = LinearOutSlowInEasing),
+                )
+        }
+        else -> {
+            // Outgoing page sits still under the incoming slide, just fades
+            // slightly — no scale or slide so the layered motion stays calm.
+            fadeOut(animationSpec = tween(PagePushMs / 2))
+        }
     }
 }
 
@@ -329,6 +375,12 @@ fun PocketSaveNavHost(
                     },
                     onCompleteTripDone = { returnToHome(navController) },
                     onShareTrip = { id -> navController.navigate(Routes.tripShare(id)) },
+                    onOpenCart = { id ->
+                        navController.navigate(Routes.cartDetail(id)) {
+                            popUpTo(Routes.CART_DETAIL) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
                     pendingDeepLink = pendingDeepLink?.takeIf { it.cartId == cartId },
                     onDeepLinkConsumed = { appContainer.consumeDeepLink() },
                 )

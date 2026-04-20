@@ -14,11 +14,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * The seven-step onboarding flow. [WELCOME], [VALUE] and [HANDOFF] are framing
- * moments (no progress bar); [CURRENCY], [STORE], [ITEM] and [TRIP] are the
- * data-entry steps the progress bar tracks.
+ * The eight-step onboarding flow. [WELCOME], [VALUE] and [HANDOFF] are framing
+ * moments (no progress bar); [CURRENCY], [MONTHLY_BUDGET], [STORE], [ITEM] and
+ * [TRIP] are the data-entry steps the progress bar tracks.
  */
-enum class OnboardingStep { WELCOME, VALUE, CURRENCY, STORE, ITEM, TRIP, HANDOFF }
+enum class OnboardingStep { WELCOME, VALUE, CURRENCY, MONTHLY_BUDGET, STORE, ITEM, TRIP, HANDOFF }
 
 /**
  * Host for the onboarding state machine and the persistence calls that run as
@@ -48,6 +48,12 @@ class OnboardingViewModel(
         private set
     var currencySymbol: String? by mutableStateOf(null)
         private set
+
+    // Monthly budget — captured on the MONTHLY_BUDGET step. Held as raw text
+    // so the field round-trips without losing trailing decimals. Empty means
+    // "skip for now" — persisted as 0.0 which the rest of the app reads as
+    // "budget not set".
+    var monthlyBudgetInput: String by mutableStateOf("")
 
     // Trip — captured on the TRIP step.
     var tripName: String by mutableStateOf("")
@@ -103,13 +109,14 @@ class OnboardingViewModel(
     val isFormValidForCompletion: Boolean
         get() = formViewModel.isFormValid && duplicateError == null
 
-    /** 0f..1f progress across the four data-entry steps, or null for framing steps. */
+    /** 0f..1f progress across the five data-entry steps, or null for framing steps. */
     val progressForStep: Float?
         get() = when (currentStep) {
             OnboardingStep.WELCOME, OnboardingStep.VALUE, OnboardingStep.HANDOFF -> null
-            OnboardingStep.CURRENCY -> 0.25f
-            OnboardingStep.STORE -> 0.50f
-            OnboardingStep.ITEM -> 0.75f
+            OnboardingStep.CURRENCY -> 0.20f
+            OnboardingStep.MONTHLY_BUDGET -> 0.40f
+            OnboardingStep.STORE -> 0.60f
+            OnboardingStep.ITEM -> 0.80f
             OnboardingStep.TRIP -> 1.00f
         }
 
@@ -118,6 +125,7 @@ class OnboardingViewModel(
     fun navigateToWelcome() { currentStep = OnboardingStep.WELCOME }
     fun navigateToValue() { currentStep = OnboardingStep.VALUE }
     fun navigateToCurrency() { currentStep = OnboardingStep.CURRENCY }
+    fun navigateToMonthlyBudget() { currentStep = OnboardingStep.MONTHLY_BUDGET }
     fun navigateToStore() { currentStep = OnboardingStep.STORE }
     fun navigateToItem() { currentStep = OnboardingStep.ITEM }
     fun navigateToTrip() { currentStep = OnboardingStep.TRIP }
@@ -129,7 +137,8 @@ class OnboardingViewModel(
             OnboardingStep.WELCOME -> OnboardingStep.WELCOME
             OnboardingStep.VALUE -> OnboardingStep.WELCOME
             OnboardingStep.CURRENCY -> OnboardingStep.VALUE
-            OnboardingStep.STORE -> OnboardingStep.CURRENCY
+            OnboardingStep.MONTHLY_BUDGET -> OnboardingStep.CURRENCY
+            OnboardingStep.STORE -> OnboardingStep.MONTHLY_BUDGET
             OnboardingStep.ITEM -> OnboardingStep.STORE
             OnboardingStep.TRIP -> OnboardingStep.ITEM
             OnboardingStep.HANDOFF -> OnboardingStep.HANDOFF
@@ -149,6 +158,22 @@ class OnboardingViewModel(
         if (code.isNullOrBlank() || symbol.isNullOrBlank()) return
         viewModelScope.launch {
             preferences.setCurrency(code, symbol)
+            navigateToMonthlyBudget()
+        }
+    }
+
+    // MARK: - Monthly budget persistence (MONTHLY_BUDGET step)
+
+    /**
+     * Persists the entered monthly budget (or clears it if the field is blank
+     * or non-numeric — DataStore stores anything <= 0 as "not set") and
+     * advances to the store step. Budget is intentionally optional: a blank
+     * entry is a valid "skip for now" that the home pill handles gracefully.
+     */
+    fun commitMonthlyBudgetAndContinue() {
+        val parsed = monthlyBudgetInput.trim().toDoubleOrNull() ?: 0.0
+        viewModelScope.launch {
+            preferences.setMonthlyBudget(parsed)
             navigateToStore()
         }
     }
@@ -352,6 +377,7 @@ class OnboardingViewModel(
         isCheckingDuplicate = false
         currencyCode = null
         currencySymbol = null
+        monthlyBudgetInput = ""
         tripName = ""
         tripBudget = ""
         tripError = null

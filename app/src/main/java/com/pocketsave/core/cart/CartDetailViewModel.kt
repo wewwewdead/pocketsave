@@ -166,8 +166,11 @@ class CartDetailViewModel(
 
     // MARK: - Completed actions
 
-    fun reopenCart() {
-        viewModelScope.launch { vaultService.reopenCart(cartId) }
+    fun reopenCart(onReopened: (String) -> Unit) {
+        viewModelScope.launch {
+            val newId = vaultService.reopenCart(cartId) ?: return@launch
+            onReopened(newId)
+        }
     }
 
     private fun buildUiState(snapshot: VaultService.Snapshot): CartDetailUiState {

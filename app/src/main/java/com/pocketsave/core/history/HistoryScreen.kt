@@ -246,12 +246,12 @@ fun HistoryScreen(
                     // haptic aligned with the gesture.
                     haptics.perform(AppHaptic.Confirm)
                     scope.launch {
-                        // reopenCart flips the cart back to SHOPPING and clears
-                        // actuals so the user can re-confirm prices live. After
-                        // the reopen we push them into the cart detail so they
-                        // see the restored state immediately.
-                        vaultService.reopenCart(target.id)
-                        onOpenCart(target.id)
+                        // reopenCart clones the completed cart into a fresh
+                        // SHOPPING cart with a new id; the original stays in
+                        // history. We navigate into the new cart so the user
+                        // can re-confirm prices live.
+                        val newId = vaultService.reopenCart(target.id) ?: return@launch
+                        onOpenCart(newId)
                     }
                 }) {
                     Text(
