@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.pocketsave.app-mergeDebugResources-79:/values-lt/values-lt.xml",
+            "outputFile": "com.pocketsave.app-mergeDebugResources-80:/values-lt/values-lt.xml",
             "map": [
                 {
                     "source": "C:\\Users\\johnm\\.gradle\\caches\\transforms-4\\6d0b011477be4b6593a6e3309f310bcd\\transformed\\glance-appwidget-1.0.0\\res\\values-lt\\values-lt.xml",

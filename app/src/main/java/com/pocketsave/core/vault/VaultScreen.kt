@@ -575,7 +575,7 @@ private fun CategoryHeader(iconKey: String, colorHex: String?, name: String, cou
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+            .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         com.pocketsave.core.vault.icons.CategoryEmojiTile(
@@ -650,14 +650,19 @@ private fun VaultItemRowView(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 5.dp)
+            .padding(horizontal = 16.dp, vertical = 2.dp)
             .alpha(if (hidden) 0f else 1f)
             .scale(landingScale)
             .clip(ticketShape)
             .background(com.pocketsave.common.ui.PocketSaveColors.SurfaceSoft)
             .clickable(enabled = !hidden) { onEdit(row.item) },
     ) {
-        com.pocketsave.common.ui.components.ReceiptGrunge(Modifier.fillMaxSize())
+        // matchParentSize — NOT fillMaxSize. Inside a LazyColumn item the parent
+        // has infinite max height, so fillMaxSize falls back to the grunge
+        // painter's intrinsic size (several hundred dp) and inflates the row,
+        // leaving gigantic gaps between cards. matchParentSize reads the Box's
+        // already-measured size from siblings and paints inside that.
+        com.pocketsave.common.ui.components.ReceiptGrunge(Modifier.matchParentSize())
         Row(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,

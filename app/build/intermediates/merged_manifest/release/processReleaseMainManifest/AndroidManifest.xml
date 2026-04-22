@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.pocketsave"
-    android:versionCode="9"
+    android:versionCode="11"
     android:versionName="0.1.2" >
 
     <uses-sdk
@@ -94,6 +94,17 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <!--
+             Tells Play Services to pre-download the Subject Segmentation
+             model alongside app install, so the first "Lift subject" on a
+             captured item doesn't hang while the model fetches. Without this
+             hint the first call fails with a NOT_DOWNLOADED error and the
+             download only kicks off in the background.
+        -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="subject_segment" />
+
         <receiver
             android:name="com.pocketsave.core.widget.PurchasedItemsWidgetReceiver"
             android:exported="true"
@@ -139,6 +150,9 @@
             android:name="com.google.mlkit.common.internal.MlKitComponentDiscoveryService"
             android:directBootAware="true"
             android:exported="false" >
+            <meta-data
+                android:name="com.google.firebase.components:com.google.mlkit.vision.segmentation.subject.internal.SubjectSegmentationRegistrar"
+                android:value="com.google.firebase.components.ComponentRegistrar" />
             <meta-data
                 android:name="com.google.firebase.components:com.google.mlkit.vision.text.internal.TextRegistrar"
                 android:value="com.google.firebase.components.ComponentRegistrar" />

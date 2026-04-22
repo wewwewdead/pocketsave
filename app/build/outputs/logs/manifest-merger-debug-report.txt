@@ -20,6 +20,7 @@ MERGED from [androidx.navigation:navigation-runtime:2.7.7] C:\Users\johnm\.gradl
 MERGED from [androidx.navigation:navigation-common-ktx:2.7.7] C:\Users\johnm\.gradle\caches\transforms-4\5ad138fec3b23b61b9b6ef002a1d3bf5\transformed\navigation-common-ktx-2.7.7\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.navigation:navigation-runtime-ktx:2.7.7] C:\Users\johnm\.gradle\caches\transforms-4\0e4ca1f66e31a5b6b2b831d60a8fc2d8\transformed\navigation-runtime-ktx-2.7.7\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.navigation:navigation-compose:2.7.7] C:\Users\johnm\.gradle\caches\transforms-4\884ec75a763e636e3ca704e0cdafa7db\transformed\navigation-compose-2.7.7\AndroidManifest.xml:2:1-7:12
+MERGED from [com.airbnb.android:lottie-compose:6.4.0] C:\Users\johnm\.gradle\caches\transforms-4\ab62cdd64cf3e0d5b433a270de31ac09\transformed\lottie-compose-6.4.0\AndroidManifest.xml:2:1-7:12
 MERGED from [com.revenuecat.purchases:purchases:8.10.8] C:\Users\johnm\.gradle\caches\transforms-4\160f270ade3a16d1bf06a3063d316735\transformed\purchases-8.10.8\AndroidManifest.xml:2:1-16:12
 MERGED from [androidx.camera:camera-video:1.3.4] C:\Users\johnm\.gradle\caches\transforms-4\6e5cdfec4d9f20ab42cb4409c89f3d95\transformed\camera-video-1.3.4\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.camera:camera-view:1.3.4] C:\Users\johnm\.gradle\caches\transforms-4\7fb2006f626065c2b96d46c41a6f0b8a\transformed\camera-view-1.3.4\AndroidManifest.xml:2:1-7:12
@@ -56,6 +57,7 @@ MERGED from [androidx.compose.ui:ui-graphics-android:1.6.8] C:\Users\johnm\.grad
 MERGED from [androidx.compose.ui:ui-tooling-android:1.6.8] C:\Users\johnm\.gradle\caches\transforms-4\1baf3659fe953e58498a0490d8743650\transformed\ui-tooling-release\AndroidManifest.xml:17:1-28:12
 MERGED from [androidx.compose.animation:animation-android:1.6.8] C:\Users\johnm\.gradle\caches\transforms-4\cb8e295f4171fbb5275851d662b69310\transformed\animation-release\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.compose.foundation:foundation-layout-android:1.6.8] C:\Users\johnm\.gradle\caches\transforms-4\ca45b181df7531f46127579011001f1b\transformed\foundation-layout-release\AndroidManifest.xml:2:1-7:12
+MERGED from [com.airbnb.android:lottie:6.4.0] C:\Users\johnm\.gradle\caches\transforms-4\c05b8ad33838b2a3720a073c39694d8a\transformed\lottie-6.4.0\AndroidManifest.xml:2:1-9:12
 MERGED from [io.coil-kt:coil:2.6.0] C:\Users\johnm\.gradle\caches\transforms-4\5646244840ba925e1fe3926d9279fcf4\transformed\coil-2.6.0\AndroidManifest.xml:2:1-7:12
 MERGED from [io.coil-kt:coil-base:2.6.0] C:\Users\johnm\.gradle\caches\transforms-4\cf38a4fab3201ca4b95f948ccd772c16\transformed\coil-base-2.6.0\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.appcompat:appcompat-resources:1.6.1] C:\Users\johnm\.gradle\caches\transforms-4\c77e9b00a03312b9f1cb5bbe02bf44e7\transformed\appcompat-resources-1.6.1\AndroidManifest.xml:17:1-22:12
@@ -73,10 +75,10 @@ MERGED from [com.google.android.gms:play-services-basement:18.4.0] C:\Users\john
 MERGED from [androidx.autofill:autofill:1.0.0] C:\Users\johnm\.gradle\caches\transforms-4\28aedbfe2196f986788115fe9d2b377b\transformed\autofill-1.0.0\AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.drawerlayout:drawerlayout:1.0.0] C:\Users\johnm\.gradle\caches\transforms-4\5cfbe8df43b6687c9b1ffe80660a481f\transformed\drawerlayout-1.0.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.fragment:fragment:1.3.6] C:\Users\johnm\.gradle\caches\transforms-4\66b70e001474630f159f16f026f567f1\transformed\fragment-1.3.6\AndroidManifest.xml:17:1-24:12
-MERGED from [androidx.vectordrawable:vectordrawable-animated:1.1.0] C:\Users\johnm\.gradle\caches\transforms-4\43c7058cca47b1addfcee0b1129e987e\transformed\vectordrawable-animated-1.1.0\AndroidManifest.xml:17:1-24:12
-MERGED from [androidx.vectordrawable:vectordrawable:1.1.0] C:\Users\johnm\.gradle\caches\transforms-4\d18f95cf2288bbc58f05588114d40170\transformed\vectordrawable-1.1.0\AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.emoji2:emoji2-views-helper:1.3.0] C:\Users\johnm\.gradle\caches\transforms-4\1211ef0cd654fcbc123ef3b3e7798a24\transformed\emoji2-views-helper-1.3.0\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\johnm\.gradle\caches\transforms-4\95d23c45c6239cadcc79d11bb4705c3d\transformed\emoji2-1.3.0\AndroidManifest.xml:17:1-35:12
+MERGED from [androidx.vectordrawable:vectordrawable-animated:1.1.0] C:\Users\johnm\.gradle\caches\transforms-4\43c7058cca47b1addfcee0b1129e987e\transformed\vectordrawable-animated-1.1.0\AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.vectordrawable:vectordrawable:1.1.0] C:\Users\johnm\.gradle\caches\transforms-4\d18f95cf2288bbc58f05588114d40170\transformed\vectordrawable-1.1.0\AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.viewpager:viewpager:1.0.0] C:\Users\johnm\.gradle\caches\transforms-4\2b44fe83d005e9a2e97bc632a3dc09d6\transformed\viewpager-1.0.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.customview:customview:1.0.0] C:\Users\johnm\.gradle\caches\transforms-4\785573c4949ef6da5ddd6f10341eb344\transformed\customview-1.0.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.loader:loader:1.0.0] C:\Users\johnm\.gradle\caches\transforms-4\bb876fd1193f24bfe02857605311a5a5\transformed\loader-1.0.0\AndroidManifest.xml:17:1-22:12
@@ -176,6 +178,8 @@ MERGED from [androidx.core:core-remoteviews:1.0.0] C:\Users\johnm\.gradle\caches
 MERGED from [androidx.core:core-remoteviews:1.0.0] C:\Users\johnm\.gradle\caches\transforms-4\dcef8c95f73bc349c78c9c3576a10162\transformed\core-remoteviews-1.0.0\AndroidManifest.xml:23:5-28:19
 MERGED from [androidx.compose.ui:ui-tooling-android:1.6.8] C:\Users\johnm\.gradle\caches\transforms-4\1baf3659fe953e58498a0490d8743650\transformed\ui-tooling-release\AndroidManifest.xml:22:5-26:19
 MERGED from [androidx.compose.ui:ui-tooling-android:1.6.8] C:\Users\johnm\.gradle\caches\transforms-4\1baf3659fe953e58498a0490d8743650\transformed\ui-tooling-release\AndroidManifest.xml:22:5-26:19
+MERGED from [com.airbnb.android:lottie:6.4.0] C:\Users\johnm\.gradle\caches\transforms-4\c05b8ad33838b2a3720a073c39694d8a\transformed\lottie-6.4.0\AndroidManifest.xml:7:5-20
+MERGED from [com.airbnb.android:lottie:6.4.0] C:\Users\johnm\.gradle\caches\transforms-4\c05b8ad33838b2a3720a073c39694d8a\transformed\lottie-6.4.0\AndroidManifest.xml:7:5-20
 MERGED from [androidx.work:work-runtime:2.7.1] C:\Users\johnm\.gradle\caches\transforms-4\46fb2e320ea4fa76a13bb59fef1dff15\transformed\work-runtime-2.7.1\AndroidManifest.xml:30:5-143:19
 MERGED from [androidx.work:work-runtime:2.7.1] C:\Users\johnm\.gradle\caches\transforms-4\46fb2e320ea4fa76a13bb59fef1dff15\transformed\work-runtime-2.7.1\AndroidManifest.xml:30:5-143:19
 MERGED from [com.android.billingclient:billing:7.1.1] C:\Users\johnm\.gradle\caches\transforms-4\11905c375bb60cc3a01059cdffc32413\transformed\billing-7.1.1\AndroidManifest.xml:21:5-36:19
@@ -320,6 +324,8 @@ MERGED from [androidx.navigation:navigation-runtime-ktx:2.7.7] C:\Users\johnm\.g
 MERGED from [androidx.navigation:navigation-runtime-ktx:2.7.7] C:\Users\johnm\.gradle\caches\transforms-4\0e4ca1f66e31a5b6b2b831d60a8fc2d8\transformed\navigation-runtime-ktx-2.7.7\AndroidManifest.xml:5:5-44
 MERGED from [androidx.navigation:navigation-compose:2.7.7] C:\Users\johnm\.gradle\caches\transforms-4\884ec75a763e636e3ca704e0cdafa7db\transformed\navigation-compose-2.7.7\AndroidManifest.xml:5:5-44
 MERGED from [androidx.navigation:navigation-compose:2.7.7] C:\Users\johnm\.gradle\caches\transforms-4\884ec75a763e636e3ca704e0cdafa7db\transformed\navigation-compose-2.7.7\AndroidManifest.xml:5:5-44
+MERGED from [com.airbnb.android:lottie-compose:6.4.0] C:\Users\johnm\.gradle\caches\transforms-4\ab62cdd64cf3e0d5b433a270de31ac09\transformed\lottie-compose-6.4.0\AndroidManifest.xml:5:5-44
+MERGED from [com.airbnb.android:lottie-compose:6.4.0] C:\Users\johnm\.gradle\caches\transforms-4\ab62cdd64cf3e0d5b433a270de31ac09\transformed\lottie-compose-6.4.0\AndroidManifest.xml:5:5-44
 MERGED from [com.revenuecat.purchases:purchases:8.10.8] C:\Users\johnm\.gradle\caches\transforms-4\160f270ade3a16d1bf06a3063d316735\transformed\purchases-8.10.8\AndroidManifest.xml:5:5-44
 MERGED from [com.revenuecat.purchases:purchases:8.10.8] C:\Users\johnm\.gradle\caches\transforms-4\160f270ade3a16d1bf06a3063d316735\transformed\purchases-8.10.8\AndroidManifest.xml:5:5-44
 MERGED from [androidx.camera:camera-video:1.3.4] C:\Users\johnm\.gradle\caches\transforms-4\6e5cdfec4d9f20ab42cb4409c89f3d95\transformed\camera-video-1.3.4\AndroidManifest.xml:5:5-44
@@ -392,6 +398,8 @@ MERGED from [androidx.compose.animation:animation-android:1.6.8] C:\Users\johnm\
 MERGED from [androidx.compose.animation:animation-android:1.6.8] C:\Users\johnm\.gradle\caches\transforms-4\cb8e295f4171fbb5275851d662b69310\transformed\animation-release\AndroidManifest.xml:5:5-44
 MERGED from [androidx.compose.foundation:foundation-layout-android:1.6.8] C:\Users\johnm\.gradle\caches\transforms-4\ca45b181df7531f46127579011001f1b\transformed\foundation-layout-release\AndroidManifest.xml:5:5-44
 MERGED from [androidx.compose.foundation:foundation-layout-android:1.6.8] C:\Users\johnm\.gradle\caches\transforms-4\ca45b181df7531f46127579011001f1b\transformed\foundation-layout-release\AndroidManifest.xml:5:5-44
+MERGED from [com.airbnb.android:lottie:6.4.0] C:\Users\johnm\.gradle\caches\transforms-4\c05b8ad33838b2a3720a073c39694d8a\transformed\lottie-6.4.0\AndroidManifest.xml:5:5-44
+MERGED from [com.airbnb.android:lottie:6.4.0] C:\Users\johnm\.gradle\caches\transforms-4\c05b8ad33838b2a3720a073c39694d8a\transformed\lottie-6.4.0\AndroidManifest.xml:5:5-44
 MERGED from [io.coil-kt:coil:2.6.0] C:\Users\johnm\.gradle\caches\transforms-4\5646244840ba925e1fe3926d9279fcf4\transformed\coil-2.6.0\AndroidManifest.xml:5:5-44
 MERGED from [io.coil-kt:coil:2.6.0] C:\Users\johnm\.gradle\caches\transforms-4\5646244840ba925e1fe3926d9279fcf4\transformed\coil-2.6.0\AndroidManifest.xml:5:5-44
 MERGED from [io.coil-kt:coil-base:2.6.0] C:\Users\johnm\.gradle\caches\transforms-4\cf38a4fab3201ca4b95f948ccd772c16\transformed\coil-base-2.6.0\AndroidManifest.xml:5:5-44
@@ -426,14 +434,14 @@ MERGED from [androidx.drawerlayout:drawerlayout:1.0.0] C:\Users\johnm\.gradle\ca
 MERGED from [androidx.drawerlayout:drawerlayout:1.0.0] C:\Users\johnm\.gradle\caches\transforms-4\5cfbe8df43b6687c9b1ffe80660a481f\transformed\drawerlayout-1.0.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.fragment:fragment:1.3.6] C:\Users\johnm\.gradle\caches\transforms-4\66b70e001474630f159f16f026f567f1\transformed\fragment-1.3.6\AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.fragment:fragment:1.3.6] C:\Users\johnm\.gradle\caches\transforms-4\66b70e001474630f159f16f026f567f1\transformed\fragment-1.3.6\AndroidManifest.xml:20:5-22:41
-MERGED from [androidx.vectordrawable:vectordrawable-animated:1.1.0] C:\Users\johnm\.gradle\caches\transforms-4\43c7058cca47b1addfcee0b1129e987e\transformed\vectordrawable-animated-1.1.0\AndroidManifest.xml:20:5-22:41
-MERGED from [androidx.vectordrawable:vectordrawable-animated:1.1.0] C:\Users\johnm\.gradle\caches\transforms-4\43c7058cca47b1addfcee0b1129e987e\transformed\vectordrawable-animated-1.1.0\AndroidManifest.xml:20:5-22:41
-MERGED from [androidx.vectordrawable:vectordrawable:1.1.0] C:\Users\johnm\.gradle\caches\transforms-4\d18f95cf2288bbc58f05588114d40170\transformed\vectordrawable-1.1.0\AndroidManifest.xml:20:5-22:41
-MERGED from [androidx.vectordrawable:vectordrawable:1.1.0] C:\Users\johnm\.gradle\caches\transforms-4\d18f95cf2288bbc58f05588114d40170\transformed\vectordrawable-1.1.0\AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.emoji2:emoji2-views-helper:1.3.0] C:\Users\johnm\.gradle\caches\transforms-4\1211ef0cd654fcbc123ef3b3e7798a24\transformed\emoji2-views-helper-1.3.0\AndroidManifest.xml:5:5-44
 MERGED from [androidx.emoji2:emoji2-views-helper:1.3.0] C:\Users\johnm\.gradle\caches\transforms-4\1211ef0cd654fcbc123ef3b3e7798a24\transformed\emoji2-views-helper-1.3.0\AndroidManifest.xml:5:5-44
 MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\johnm\.gradle\caches\transforms-4\95d23c45c6239cadcc79d11bb4705c3d\transformed\emoji2-1.3.0\AndroidManifest.xml:21:5-44
 MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\johnm\.gradle\caches\transforms-4\95d23c45c6239cadcc79d11bb4705c3d\transformed\emoji2-1.3.0\AndroidManifest.xml:21:5-44
+MERGED from [androidx.vectordrawable:vectordrawable-animated:1.1.0] C:\Users\johnm\.gradle\caches\transforms-4\43c7058cca47b1addfcee0b1129e987e\transformed\vectordrawable-animated-1.1.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.vectordrawable:vectordrawable-animated:1.1.0] C:\Users\johnm\.gradle\caches\transforms-4\43c7058cca47b1addfcee0b1129e987e\transformed\vectordrawable-animated-1.1.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.vectordrawable:vectordrawable:1.1.0] C:\Users\johnm\.gradle\caches\transforms-4\d18f95cf2288bbc58f05588114d40170\transformed\vectordrawable-1.1.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.vectordrawable:vectordrawable:1.1.0] C:\Users\johnm\.gradle\caches\transforms-4\d18f95cf2288bbc58f05588114d40170\transformed\vectordrawable-1.1.0\AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.viewpager:viewpager:1.0.0] C:\Users\johnm\.gradle\caches\transforms-4\2b44fe83d005e9a2e97bc632a3dc09d6\transformed\viewpager-1.0.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.viewpager:viewpager:1.0.0] C:\Users\johnm\.gradle\caches\transforms-4\2b44fe83d005e9a2e97bc632a3dc09d6\transformed\viewpager-1.0.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.customview:customview:1.0.0] C:\Users\johnm\.gradle\caches\transforms-4\785573c4949ef6da5ddd6f10341eb344\transformed\customview-1.0.0\AndroidManifest.xml:20:5-44

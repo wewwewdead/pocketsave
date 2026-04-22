@@ -25,8 +25,13 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.ChevronLeft
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -123,7 +128,7 @@ fun HomeScreen(
     }
 
     val selectedItems by selectionStore.activeCartItems.collectAsState()
-    val selectedItemCount = selectedItems.values.sumOf { if (it > 0.0) 1 else 0 }
+    val selectedItemCount = selectedItems.values.count { it > 0.0 }
 
     // UI state.
     var isMenuOpen by remember { mutableStateOf(false) }
@@ -239,6 +244,8 @@ fun HomeScreen(
                 onOpenVault = { isVaultOpen = true },
                 onOpenCart = onOpenCart,
                 onOpenMenu = { isMenuOpen = true },
+                isMenuOpen = isMenuOpen,
+                onToggleMenu = { isMenuOpen = !isMenuOpen },
                 selectedTab = selectedTab,
                 pagerState = pagerState,
                 onTabSelected = { tab ->
@@ -308,6 +315,8 @@ private fun HomeContentRoot(
     onOpenVault: () -> Unit,
     onOpenCart: (cartId: String) -> Unit,
     onOpenMenu: () -> Unit,
+    isMenuOpen: Boolean,
+    onToggleMenu: () -> Unit,
     selectedTab: HomeTab,
     pagerState: androidx.compose.foundation.pager.PagerState,
     onTabSelected: (HomeTab) -> Unit,
@@ -370,6 +379,16 @@ private fun HomeContentRoot(
                 }
             }
         }
+
+        // Floating settings chevron — vertically centered on the left edge.
+        // Faces left when closed; rotates 180° to face right when the menu is open.
+        SideMenuChevron(
+            isMenuOpen = isMenuOpen,
+            onToggle = onToggleMenu,
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = PocketSaveDimens.BinderWidth + 4.dp),
+        )
     }
 }
 
@@ -530,6 +549,60 @@ private fun StatisticsPageContent(statusBarPadding: androidx.compose.ui.unit.Dp)
                 fontSize = 15.sp,
             )
         }
+    }
+}
+
+/**
+ * Floating disclosure chevron that lives at the left-center edge of the home
+ * surface. Tapping it toggles the side menu. Rotates 0° → 180° in a soft
+ * overshoot spring so the arrow flips from `<` to `>` (and back) with a subtle
+ * bounce that mirrors the menu drawer's own spring.
+ */
+@Composable
+private fun SideMenuChevron(
+    isMenuOpen: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val rotation by animateFloatAsState(
+        targetValue = if (isMenuOpen) 180f else 0f,
+        animationSpec = spring(dampingRatio = 0.55f, stiffness = 260f),
+        label = "sideMenuChevronRotation",
+    )
+    val scale by animateFloatAsState(
+        targetValue = if (isMenuOpen) 1.06f else 1f,
+        animationSpec = spring(dampingRatio = 0.5f, stiffness = 320f),
+        label = "sideMenuChevronScale",
+    )
+    val haptics = com.pocketsave.core.haptics.rememberAppHaptics()
+    val interaction = remember { MutableInteractionSource() }
+    Box(
+        modifier = modifier
+            .size(36.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.95f))
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                onClick = {
+                    haptics.perform(com.pocketsave.core.haptics.AppHaptic.Light)
+                    onToggle()
+                },
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.ChevronLeft,
+            contentDescription = if (isMenuOpen) "Close settings menu" else "Open settings menu",
+            tint = PocketSaveColors.DarkPrimary,
+            modifier = Modifier
+                .size(22.dp)
+                .graphicsLayer { rotationZ = rotation },
+        )
     }
 }
 

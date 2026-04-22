@@ -2,6 +2,10 @@ R_DEF: Internal format may change without notice
 local
 color pocketsave_background
 color pocketsave_dark_primary
+drawable grunge
+drawable pocketsave_logo
+font fuzzybubbles_bold
+font fuzzybubbles_regular
 font poppins_bold
 font poppins_light
 font poppins_medium
@@ -11,6 +15,23 @@ layout widget_initial_loading
 mipmap ic_launcher
 mipmap ic_launcher_foreground
 mipmap ic_launcher_round
+raw lottie_alert
+raw lottie_arrow
+raw lottie_celebration
+raw lottie_celebration_2
+raw lottie_celebration_3
+raw lottie_completeshopping
+raw lottie_empty
+raw lottie_fire
+raw lottie_hi
+raw lottie_progress
+raw lottie_shopping
+raw lottie_shoppingmode
+raw lottie_store
+raw lottie_thanks
+raw lottie_thumbs_up
+raw lottie_tofinish
+raw lottie_trash
 string app_name
 string purchased_items_widget_description
 string purchased_items_widget_label

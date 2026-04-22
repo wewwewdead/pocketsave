@@ -56,8 +56,10 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.widthIn
 import com.pocketsave.billing.SubscriptionManager
-import com.pocketsave.common.ui.PocketSaveTokens
+import com.pocketsave.common.ui.PocketSaveColors
 import com.pocketsave.core.currency.CurrencyPickerSheet
 import com.pocketsave.core.currency.LocalCurrencyFormatter
 import com.pocketsave.core.haptics.AppHaptic
@@ -120,13 +122,23 @@ fun MoreScreen(
     val scope = rememberCoroutineScope()
     val haptics = rememberAppHaptics()
 
-    val pastels = PocketSaveTokens.pastels
+    // Monotone palette — everything on this surface lives in the DarkPrimary
+    // family. Tokens sampled once at the top so individual rows don't hand-roll
+    // their own alphas.
+    val accent = PocketSaveColors.DarkPrimary
+    val accentSoft = accent.copy(alpha = 0.06f)
+    val accentMuted = accent.copy(alpha = 0.55f)
 
     Scaffold(containerColor = MaterialTheme.colorScheme.background) { inner ->
         Column(
             modifier = Modifier
                 .padding(inner)
-                .fillMaxSize()
+                .fillMaxHeight()
+                // The side drawer reveals ~280dp of menu before the rotated
+                // home page overlaps. Capping the content width here keeps
+                // every card's right edge inside the visible strip instead of
+                // being clipped by the home page above it.
+                .widthIn(max = 280.dp)
                 .padding(horizontal = 20.dp, vertical = 16.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -137,11 +149,11 @@ fun MoreScreen(
                         fontWeight = FontWeight.Medium,
                         letterSpacing = 0.9.sp,
                     ),
-                    color = pastels.butterDeep,
+                    color = accentMuted,
                 )
                 Spacer(Modifier.width(6.dp))
                 com.pocketsave.common.ui.decor.UnderlineSwoosh(
-                    color = pastels.butterDeep.copy(alpha = 0.55f),
+                    color = accent.copy(alpha = 0.3f),
                 )
             }
             Spacer(Modifier.height(4.dp))
@@ -150,7 +162,7 @@ fun MoreScreen(
                 style = MaterialTheme.typography.displaySmall.copy(
                     fontWeight = FontWeight.Medium,
                 ),
-                color = pastels.inkBerry,
+                color = accent,
             )
             Spacer(Modifier.height(4.dp))
             Text(
@@ -167,7 +179,7 @@ fun MoreScreen(
             // on `user.name` being non-empty once the user has set one.
             val identityInteraction = remember { MutableInteractionSource() }
             Surface(
-                color = pastels.mintSoft,
+                color = accentSoft,
                 shape = RoundedCornerShape(22.dp),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -185,26 +197,26 @@ fun MoreScreen(
                     IconBubble(
                         icon = Icons.Outlined.Person,
                         tint = Color.White.copy(alpha = 0.75f),
-                        iconTint = pastels.mintDeep,
+                        iconTint = accent,
                     )
                     Spacer(Modifier.width(14.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "SIGNED IN AS",
                             style = MaterialTheme.typography.labelSmall,
-                            color = pastels.mintDeep.copy(alpha = 0.78f),
+                            color = accentMuted,
                         )
                         Spacer(Modifier.height(2.dp))
                         Text(
                             text = userName,
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                            color = pastels.mintDeep,
+                            color = accent,
                         )
                     }
                     Icon(
                         imageVector = Icons.Outlined.ChevronRight,
                         contentDescription = null,
-                        tint = pastels.mintDeep,
+                        tint = accentMuted,
                         modifier = Modifier.size(20.dp),
                     )
                 }
@@ -215,6 +227,9 @@ fun MoreScreen(
             ProMembershipRow(
                 isPro = isPro,
                 onClick = onOpenPaywall,
+                accent = accent,
+                accentSoft = accentSoft,
+                accentMuted = accentMuted,
             )
 
             Spacer(Modifier.height(14.dp))
@@ -367,7 +382,7 @@ private fun MoreRow(
     icon: ImageVector,
     onClick: () -> Unit,
 ) {
-    val pastels = PocketSaveTokens.pastels
+    val accent = PocketSaveColors.DarkPrimary
     val interaction = remember { MutableInteractionSource() }
     Surface(
         color = MaterialTheme.colorScheme.surface,
@@ -387,8 +402,8 @@ private fun MoreRow(
         ) {
             IconBubble(
                 icon = icon,
-                tint = pastels.mintSoft,
-                iconTint = pastels.mintDeep,
+                tint = accent.copy(alpha = 0.08f),
+                iconTint = accent,
             )
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -419,10 +434,14 @@ private fun ResetRow(
     isResetting: Boolean,
     onClick: () -> Unit,
 ) {
-    val pastels = PocketSaveTokens.pastels
+    // Monotone card; the destructive affordance comes from error-tinted text
+    // and icon, not a full pink wash. Paired with the "Danger zone" section
+    // label above, that's enough signal without breaking the monotone scheme.
+    val accent = PocketSaveColors.DarkPrimary
+    val danger = MaterialTheme.colorScheme.error
     val interaction = remember { MutableInteractionSource() }
     Surface(
-        color = pastels.blushSoft,
+        color = accent.copy(alpha = 0.06f),
         shape = RoundedCornerShape(20.dp),
         modifier = Modifier
             .fillMaxWidth()
@@ -442,13 +461,13 @@ private fun ResetRow(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.6f)),
+                    .background(Color.White.copy(alpha = 0.75f)),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = Icons.Outlined.RestartAlt,
                     contentDescription = null,
-                    tint = pastels.blushDeep,
+                    tint = danger,
                     modifier = Modifier.size(20.dp),
                 )
             }
@@ -457,13 +476,13 @@ private fun ResetRow(
                 Text(
                     text = if (isResetting) "Resetting…" else "Reset app",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = pastels.blushDeep,
+                    color = danger,
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
                     text = "Wipes all trips, items, and preferences.",
                     style = MaterialTheme.typography.labelSmall,
-                    color = pastels.blushDeep.copy(alpha = 0.78f),
+                    color = accent.copy(alpha = 0.6f),
                 )
             }
         }
@@ -630,11 +649,13 @@ private fun trimTrailingZeros(value: Double): String {
 private fun ProMembershipRow(
     isPro: Boolean,
     onClick: () -> Unit,
+    accent: Color,
+    accentSoft: Color,
+    accentMuted: Color,
 ) {
-    val pastels = PocketSaveTokens.pastels
     val interaction = remember { MutableInteractionSource() }
     Surface(
-        color = pastels.lavenderSoft,
+        color = accentSoft,
         shape = RoundedCornerShape(22.dp),
         modifier = Modifier
             .fillMaxWidth()
@@ -652,21 +673,21 @@ private fun ProMembershipRow(
             IconBubble(
                 icon = Icons.Filled.AutoAwesome,
                 tint = Color.White.copy(alpha = 0.7f),
-                iconTint = pastels.lavenderDeep,
+                iconTint = accent,
             )
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "POCKETSAVE PRO",
                     style = MaterialTheme.typography.labelSmall,
-                    color = pastels.lavenderDeep.copy(alpha = 0.78f),
+                    color = accentMuted,
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
                     text = if (isPro) "Membership active" else "Unlock the full app",
                     style = MaterialTheme.typography.titleMedium
                         .copy(fontWeight = FontWeight.SemiBold),
-                    color = pastels.lavenderDeep,
+                    color = accent,
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
@@ -675,13 +696,13 @@ private fun ProMembershipRow(
                     else
                         "Unlimited trips, scanning, widgets, insights, and more.",
                     style = MaterialTheme.typography.labelSmall,
-                    color = pastels.lavenderDeep.copy(alpha = 0.78f),
+                    color = accentMuted,
                 )
             }
             Icon(
                 imageVector = Icons.Outlined.ChevronRight,
                 contentDescription = null,
-                tint = pastels.lavenderDeep,
+                tint = accentMuted,
                 modifier = Modifier.size(20.dp),
             )
         }

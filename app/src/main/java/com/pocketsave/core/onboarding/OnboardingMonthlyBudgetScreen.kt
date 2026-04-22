@@ -8,6 +8,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -15,6 +20,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -36,11 +43,15 @@ import kotlinx.coroutines.delay
  * app treats as "budget not set" and hides the ratio UI until the user sets
  * one from More later.
  */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun OnboardingMonthlyBudgetScreen(viewModel: OnboardingViewModel) {
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     val formatter = LocalCurrencyFormatter.current
+    val scrollState = rememberScrollState()
+    val bringIntoView = remember { BringIntoViewRequester() }
+    val scope = rememberCoroutineScope()
 
     // Let the step transition + staggered reveal land before requesting focus
     // — same pattern as the Trip step; attaching to a not-yet-composed target
@@ -66,7 +77,15 @@ fun OnboardingMonthlyBudgetScreen(viewModel: OnboardingViewModel) {
             }
         },
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        // Scroll container so the whole sheet can slide up when the IME opens
+        // — without it, the input sits below the keyboard on short screens.
+        // The `bringIntoViewRequester` below explicitly pulls the field into
+        // view on focus gain so the user never has to scroll manually.
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState),
+        ) {
             OnboardingSection(delayMs = 40) {
                 Text(
                     text = "Your monthly budget.",
@@ -99,6 +118,20 @@ fun OnboardingMonthlyBudgetScreen(viewModel: OnboardingViewModel) {
                         imeAction = ImeAction.Done,
                         modifier = Modifier
                             .fillMaxWidth()
+                            .bringIntoViewRequester(bringIntoView)
+                            .onFocusChanged { focusState ->
+                                // The keyboard animation runs for ~300ms; waiting
+                                // a beat before scrolling means the scroll lands
+                                // against the *post-IME* viewport rather than the
+                                // pre-IME one, so the field ends up truly visible
+                                // instead of halfway under the keyboard.
+                                if (focusState.isFocused) {
+                                    scope.launch {
+                                        delay(320)
+                                        bringIntoView.bringIntoView()
+                                    }
+                                }
+                            }
                             .focusRequester(focusRequester),
                     )
 

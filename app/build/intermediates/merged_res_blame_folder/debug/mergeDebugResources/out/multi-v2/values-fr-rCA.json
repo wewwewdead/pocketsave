@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.pocketsave.app-mergeDebugResources-79:/values-fr-rCA/values-fr-rCA.xml",
+            "outputFile": "com.pocketsave.app-mergeDebugResources-80:/values-fr-rCA/values-fr-rCA.xml",
             "map": [
                 {
                     "source": "C:\\Users\\johnm\\.gradle\\caches\\transforms-4\\6cfed99d64f4761547c57200c19cab28\\transformed\\foundation-release\\res\\values-fr-rCA\\values-fr-rCA.xml",

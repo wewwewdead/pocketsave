@@ -49,7 +49,7 @@ android {
         applicationId = "com.pocketsave"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10
+        versionCode = 11
         versionName = "0.1.2"
         vectorDrawables { useSupportLibrary = true }
 
@@ -141,6 +141,10 @@ dependencies {
     implementation("androidx.exifinterface:exifinterface:1.3.7")
     implementation("androidx.activity:activity-ktx:1.9.0")
     implementation("io.coil-kt:coil-compose:2.6.0")
+
+    // Lottie animations — used by HomePrimaryHeader, HomeCartRow, TripShareScreen
+    // to play the hand-drawn JSON animations in app/src/main/res/raw/lottie_*.json.
+    implementation("com.airbnb.android:lottie-compose:6.4.0")
 
     // CameraX + ML Kit text recognition for the scanner phase.
     implementation("androidx.camera:camera-core:1.3.4")

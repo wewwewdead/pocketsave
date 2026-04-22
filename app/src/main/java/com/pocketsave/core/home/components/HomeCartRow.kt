@@ -218,8 +218,10 @@ private fun CardBody(item: HomeCartRowItem, onOpen: () -> Unit) {
             .background(bg)
             .clickable(onClick = onOpen),
     ) {
-        // Faint paper grunge.
-        CartRowGrunge(Modifier.fillMaxSize())
+        // Faint paper grunge. matchParentSize (not fillMaxSize) so we inherit
+        // the card's measured size instead of expanding to the grunge painter's
+        // intrinsic dimensions under LazyColumn's infinite height constraint.
+        CartRowGrunge(Modifier.matchParentSize())
 
         Column(
             Modifier

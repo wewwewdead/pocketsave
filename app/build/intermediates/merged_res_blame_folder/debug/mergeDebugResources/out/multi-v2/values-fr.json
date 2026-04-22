@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.pocketsave.app-mergeDebugResources-79:/values-fr/values-fr.xml",
+            "outputFile": "com.pocketsave.app-mergeDebugResources-80:/values-fr/values-fr.xml",
             "map": [
                 {
                     "source": "C:\\Users\\johnm\\.gradle\\caches\\transforms-4\\a8fe13f7f2c517447a94f44e71deaff6\\transformed\\material3-release\\res\\values-fr\\values-fr.xml",

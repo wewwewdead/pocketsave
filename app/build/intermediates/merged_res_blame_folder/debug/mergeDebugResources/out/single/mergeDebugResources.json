@@ -1,110 +1,194 @@
 [
     {
-        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-xxxhdpi_ic_launcher_round.png.flat",
-        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-xxxhdpi\\ic_launcher_round.png"
+        "merged": "com.pocketsave.app-debug-82:/xml_purchased_items_widget_info.xml.flat",
+        "source": "com.pocketsave.app-main-84:/xml/purchased_items_widget_info.xml"
     },
     {
-        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-mdpi_ic_launcher_round.png.flat",
-        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-mdpi\\ic_launcher_round.png"
+        "merged": "com.pocketsave.app-debug-82:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "com.pocketsave.app-main-84:/mipmap-anydpi-v26/ic_launcher_round.xml"
     },
     {
-        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-hdpi_ic_launcher_foreground.png.flat",
-        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-hdpi\\ic_launcher_foreground.png"
+        "merged": "com.pocketsave.app-debug-82:/mipmap-xxhdpi_ic_launcher.png.flat",
+        "source": "com.pocketsave.app-main-84:/mipmap-xxhdpi/ic_launcher.png"
     },
     {
-        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\xml_backup_rules.xml.flat",
-        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\xml\\backup_rules.xml"
+        "merged": "com.pocketsave.app-debug-82:/raw_lottie_shoppingmode.json.flat",
+        "source": "com.pocketsave.app-main-84:/raw/lottie_shoppingmode.json"
     },
     {
-        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\xml_file_paths.xml.flat",
-        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\xml\\file_paths.xml"
+        "merged": "com.pocketsave.app-debug-82:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.pocketsave.app-main-84:/mipmap-anydpi-v26/ic_launcher.xml"
     },
     {
-        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-anydpi-v26_ic_launcher_round.xml.flat",
-        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-anydpi-v26\\ic_launcher_round.xml"
+        "merged": "com.pocketsave.app-debug-82:/raw_lottie_thumbs_up.json.flat",
+        "source": "com.pocketsave.app-main-84:/raw/lottie_thumbs_up.json"
     },
     {
-        "merged": "com.pocketsave.app-debug-81:/font_poppins_bold.ttf.flat",
-        "source": "com.pocketsave.app-main-83:/font/poppins_bold.ttf"
+        "merged": "com.pocketsave.app-debug-82:/font_poppins_semibold.ttf.flat",
+        "source": "com.pocketsave.app-main-84:/font/poppins_semibold.ttf"
     },
     {
-        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-mdpi_ic_launcher.png.flat",
-        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-mdpi\\ic_launcher.png"
+        "merged": "com.pocketsave.app-debug-82:/font_poppins_light.ttf.flat",
+        "source": "com.pocketsave.app-main-84:/font/poppins_light.ttf"
     },
     {
-        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-xxhdpi_ic_launcher.png.flat",
-        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-xxhdpi\\ic_launcher.png"
+        "merged": "com.pocketsave.app-debug-82:/drawable_grunge.png.flat",
+        "source": "com.pocketsave.app-main-84:/drawable/grunge.png"
     },
     {
-        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\layout_widget_initial_loading.xml.flat",
-        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\layout\\widget_initial_loading.xml"
+        "merged": "com.pocketsave.app-debug-82:/raw_lottie_store.json.flat",
+        "source": "com.pocketsave.app-main-84:/raw/lottie_store.json"
     },
     {
-        "merged": "com.pocketsave.app-debug-81:/font_poppins_semibold.ttf.flat",
-        "source": "com.pocketsave.app-main-83:/font/poppins_semibold.ttf"
+        "merged": "com.pocketsave.app-debug-82:/raw_lottie_celebration.json.flat",
+        "source": "com.pocketsave.app-main-84:/raw/lottie_celebration.json"
     },
     {
-        "merged": "com.pocketsave.app-debug-81:/font_poppins_medium.ttf.flat",
-        "source": "com.pocketsave.app-main-83:/font/poppins_medium.ttf"
+        "merged": "com.pocketsave.app-debug-82:/font_poppins_medium.ttf.flat",
+        "source": "com.pocketsave.app-main-84:/font/poppins_medium.ttf"
     },
     {
-        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-xhdpi_ic_launcher_round.png.flat",
-        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-xhdpi\\ic_launcher_round.png"
+        "merged": "com.pocketsave.app-debug-82:/mipmap-xxxhdpi_ic_launcher.png.flat",
+        "source": "com.pocketsave.app-main-84:/mipmap-xxxhdpi/ic_launcher.png"
     },
     {
-        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-anydpi-v26_ic_launcher.xml.flat",
-        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-anydpi-v26\\ic_launcher.xml"
+        "merged": "com.pocketsave.app-debug-82:/raw_lottie_arrow.json.flat",
+        "source": "com.pocketsave.app-main-84:/raw/lottie_arrow.json"
     },
     {
-        "merged": "com.pocketsave.app-debug-81:/font_poppins_regular.ttf.flat",
-        "source": "com.pocketsave.app-main-83:/font/poppins_regular.ttf"
+        "merged": "com.pocketsave.app-debug-82:/mipmap-mdpi_ic_launcher_foreground.png.flat",
+        "source": "com.pocketsave.app-main-84:/mipmap-mdpi/ic_launcher_foreground.png"
     },
     {
-        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-xxhdpi_ic_launcher_round.png.flat",
-        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-xxhdpi\\ic_launcher_round.png"
+        "merged": "com.pocketsave.app-debug-82:/font_fuzzybubbles_bold.ttf.flat",
+        "source": "com.pocketsave.app-main-84:/font/fuzzybubbles_bold.ttf"
     },
     {
-        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-mdpi_ic_launcher_foreground.png.flat",
-        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-mdpi\\ic_launcher_foreground.png"
+        "merged": "com.pocketsave.app-debug-82:/font_poppins_regular.ttf.flat",
+        "source": "com.pocketsave.app-main-84:/font/poppins_regular.ttf"
     },
     {
-        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-xhdpi_ic_launcher.png.flat",
-        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-xhdpi\\ic_launcher.png"
+        "merged": "com.pocketsave.app-debug-82:/mipmap-xxhdpi_ic_launcher_foreground.png.flat",
+        "source": "com.pocketsave.app-main-84:/mipmap-xxhdpi/ic_launcher_foreground.png"
     },
     {
-        "merged": "com.pocketsave.app-debug-81:/font_poppins_light.ttf.flat",
-        "source": "com.pocketsave.app-main-83:/font/poppins_light.ttf"
+        "merged": "com.pocketsave.app-debug-82:/xml_data_extraction_rules.xml.flat",
+        "source": "com.pocketsave.app-main-84:/xml/data_extraction_rules.xml"
     },
     {
-        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-xhdpi_ic_launcher_foreground.png.flat",
-        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-xhdpi\\ic_launcher_foreground.png"
+        "merged": "com.pocketsave.app-debug-82:/mipmap-xxxhdpi_ic_launcher_round.png.flat",
+        "source": "com.pocketsave.app-main-84:/mipmap-xxxhdpi/ic_launcher_round.png"
     },
     {
-        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-hdpi_ic_launcher.png.flat",
-        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-hdpi\\ic_launcher.png"
+        "merged": "com.pocketsave.app-debug-82:/raw_lottie_progress.json.flat",
+        "source": "com.pocketsave.app-main-84:/raw/lottie_progress.json"
     },
     {
-        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-xxhdpi_ic_launcher_foreground.png.flat",
-        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-xxhdpi\\ic_launcher_foreground.png"
+        "merged": "com.pocketsave.app-debug-82:/mipmap-xxhdpi_ic_launcher_round.png.flat",
+        "source": "com.pocketsave.app-main-84:/mipmap-xxhdpi/ic_launcher_round.png"
     },
     {
-        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\xml_data_extraction_rules.xml.flat",
-        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\xml\\data_extraction_rules.xml"
+        "merged": "com.pocketsave.app-debug-82:/font_poppins_bold.ttf.flat",
+        "source": "com.pocketsave.app-main-84:/font/poppins_bold.ttf"
     },
     {
-        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-xxxhdpi_ic_launcher.png.flat",
-        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-xxxhdpi\\ic_launcher.png"
+        "merged": "com.pocketsave.app-debug-82:/mipmap-xhdpi_ic_launcher_round.png.flat",
+        "source": "com.pocketsave.app-main-84:/mipmap-xhdpi/ic_launcher_round.png"
     },
     {
-        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-xxxhdpi_ic_launcher_foreground.png.flat",
-        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-xxxhdpi\\ic_launcher_foreground.png"
+        "merged": "com.pocketsave.app-debug-82:/font_fuzzybubbles_regular.ttf.flat",
+        "source": "com.pocketsave.app-main-84:/font/fuzzybubbles_regular.ttf"
     },
     {
-        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\xml_purchased_items_widget_info.xml.flat",
-        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\xml\\purchased_items_widget_info.xml"
+        "merged": "com.pocketsave.app-debug-82:/raw_lottie_celebration_2.json.flat",
+        "source": "com.pocketsave.app-main-84:/raw/lottie_celebration_2.json"
     },
     {
-        "merged": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-debug-81:\\mipmap-hdpi_ic_launcher_round.png.flat",
-        "source": "C:\\Users\\johnm\\.gradle\\daemon\\8.7\\com.pocketsave.app-main-83:\\mipmap-hdpi\\ic_launcher_round.png"
+        "merged": "com.pocketsave.app-debug-82:/mipmap-mdpi_ic_launcher.png.flat",
+        "source": "com.pocketsave.app-main-84:/mipmap-mdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.pocketsave.app-debug-82:/layout_widget_initial_loading.xml.flat",
+        "source": "com.pocketsave.app-main-84:/layout/widget_initial_loading.xml"
+    },
+    {
+        "merged": "com.pocketsave.app-debug-82:/mipmap-hdpi_ic_launcher_round.png.flat",
+        "source": "com.pocketsave.app-main-84:/mipmap-hdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.pocketsave.app-debug-82:/raw_lottie_thanks.json.flat",
+        "source": "com.pocketsave.app-main-84:/raw/lottie_thanks.json"
+    },
+    {
+        "merged": "com.pocketsave.app-debug-82:/raw_lottie_empty.json.flat",
+        "source": "com.pocketsave.app-main-84:/raw/lottie_empty.json"
+    },
+    {
+        "merged": "com.pocketsave.app-debug-82:/raw_lottie_trash.json.flat",
+        "source": "com.pocketsave.app-main-84:/raw/lottie_trash.json"
+    },
+    {
+        "merged": "com.pocketsave.app-debug-82:/mipmap-xhdpi_ic_launcher_foreground.png.flat",
+        "source": "com.pocketsave.app-main-84:/mipmap-xhdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "com.pocketsave.app-debug-82:/mipmap-xhdpi_ic_launcher.png.flat",
+        "source": "com.pocketsave.app-main-84:/mipmap-xhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.pocketsave.app-debug-82:/xml_backup_rules.xml.flat",
+        "source": "com.pocketsave.app-main-84:/xml/backup_rules.xml"
+    },
+    {
+        "merged": "com.pocketsave.app-debug-82:/raw_lottie_fire.json.flat",
+        "source": "com.pocketsave.app-main-84:/raw/lottie_fire.json"
+    },
+    {
+        "merged": "com.pocketsave.app-debug-82:/raw_lottie_hi.json.flat",
+        "source": "com.pocketsave.app-main-84:/raw/lottie_hi.json"
+    },
+    {
+        "merged": "com.pocketsave.app-debug-82:/mipmap-xxxhdpi_ic_launcher_foreground.png.flat",
+        "source": "com.pocketsave.app-main-84:/mipmap-xxxhdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "com.pocketsave.app-debug-82:/xml_file_paths.xml.flat",
+        "source": "com.pocketsave.app-main-84:/xml/file_paths.xml"
+    },
+    {
+        "merged": "com.pocketsave.app-debug-82:/mipmap-mdpi_ic_launcher_round.png.flat",
+        "source": "com.pocketsave.app-main-84:/mipmap-mdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.pocketsave.app-debug-82:/raw_lottie_celebration_3.json.flat",
+        "source": "com.pocketsave.app-main-84:/raw/lottie_celebration_3.json"
+    },
+    {
+        "merged": "com.pocketsave.app-debug-82:/mipmap-hdpi_ic_launcher_foreground.png.flat",
+        "source": "com.pocketsave.app-main-84:/mipmap-hdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "com.pocketsave.app-debug-82:/raw_lottie_alert.json.flat",
+        "source": "com.pocketsave.app-main-84:/raw/lottie_alert.json"
+    },
+    {
+        "merged": "com.pocketsave.app-debug-82:/raw_lottie_tofinish.json.flat",
+        "source": "com.pocketsave.app-main-84:/raw/lottie_tofinish.json"
+    },
+    {
+        "merged": "com.pocketsave.app-debug-82:/mipmap-hdpi_ic_launcher.png.flat",
+        "source": "com.pocketsave.app-main-84:/mipmap-hdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.pocketsave.app-debug-82:/raw_lottie_shopping.json.flat",
+        "source": "com.pocketsave.app-main-84:/raw/lottie_shopping.json"
+    },
+    {
+        "merged": "com.pocketsave.app-debug-82:/raw_lottie_completeshopping.json.flat",
+        "source": "com.pocketsave.app-main-84:/raw/lottie_completeshopping.json"
+    },
+    {
+        "merged": "com.pocketsave.app-debug-82:/drawable_pocketsave_logo.png.flat",
+        "source": "com.pocketsave.app-main-84:/drawable/pocketsave_logo.png"
     }
 ]
