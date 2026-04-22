@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">PocketSave</string>
+    <string name="purchased_items_widget_description">Track your purchased items during an active shopping trip.</string>
+    <string name="purchased_items_widget_label">PocketSave purchased items</string>
+</resources>

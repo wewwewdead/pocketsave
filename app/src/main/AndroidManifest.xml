@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Scanner phase: CameraX preview needs the camera permission.
+         `android:required="false"` lets devices without a rear camera still install
+         the app (they'll fall back to the "Pick from gallery" path). -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+
+    <!-- RevenueCat needs network access for offerings + customer-info fetches and
+         to complete Play Billing purchase events. Play Billing itself is added
+         transitively by the Purchases SDK via com.android.vending.BILLING. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:name=".PocketSaveApplication"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.PocketSave">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.PocketSave">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Port of iOS `pocketsave://…` deep links from
+                 `PocketSave/App/GrockApp.swift::handleDeepLink`. The app owns a
+                 single task so VIEW intents resume the existing activity and
+                 re-drive the nav graph via `onNewIntent`. -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="pocketsave" />
+            </intent-filter>
+        </activity>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <!-- Tells Play Services to pre-download the Subject Segmentation
+             model alongside app install, so the first "Lift subject" on a
+             captured item doesn't hang while the model fetches. Without this
+             hint the first call fails with a NOT_DOWNLOADED error and the
+             download only kicks off in the background. -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="subject_segment" />
+
+        <receiver
+            android:name=".core.widget.PurchasedItemsWidgetReceiver"
+            android:exported="true"
+            android:label="@string/purchased_items_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/purchased_items_widget_info" />
+        </receiver>
+    </application>
+</manifest>

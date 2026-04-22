@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(open *)",
+      "Bash(xcrun simctl *)",
+      "Bash(osascript -e 'tell application \"Simulator\" to activate')",
+      "Bash(osascript -e 'tell application \"System Events\" to tell process \"Simulator\" to keystroke \"h\" using {command down, shift down}')",
+      "Bash(./gradlew compileDebugKotlin)",
+      "Read(//opt/homebrew/bin/**)",
+      "Bash(brew list *)"
+    ]
+  },
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true
+  }
+}
